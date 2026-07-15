@@ -13,11 +13,11 @@ from dsp.runtime.traffic_profiles import scenario_params_for_profile
 from dsp.runner import RunManager
 
 
-def test_normal_profile_sql_injection_318_requests_for_two_hosts():
+def test_normal_profile_sql_injection_1000_requests_for_two_hosts():
     params = scenario_params_for_profile("sql_injection", "normal")
-    assert params["max_total"] == 318
+    assert params["max_total"] == 1000
     assert params["max_hosts"] == 2
-    assert params["max_per_host"] == 159
+    assert params["max_per_host"] == 500
 
 
 def test_plan_sqli_requests_normal_profile_volume():
@@ -26,7 +26,7 @@ def test_plan_sqli_requests_normal_profile_volume():
         endpoints=[("10.10.10.20", 8080), ("10.10.10.21", 9000)],
         max_hosts=params["max_hosts"],
     )
-    assert len(plans) == 318
+    assert len(plans) == 1000
     counts: dict[str, int] = {}
     for plan in plans:
         key = f"{plan.host}:{plan.port}"
@@ -75,7 +75,10 @@ def test_sql_injection_writes_jsonl_evidence(tmp_runs_dir):
         "transport",
     }
     assert required_fields.issubset(records[0])
-    assert records[0]["payload_category"] == "suspected_query"
+    categories = {record["payload_category"] for record in records}
+    assert "core_time_based" in categories
+    assert "core_union_select" in categories
+    assert "suspected_query" in categories
     assert records[0]["transport"] == "query"
 
 

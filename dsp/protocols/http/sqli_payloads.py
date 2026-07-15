@@ -10,8 +10,6 @@ from urllib.parse import quote
 from dsp.protocols.base import HttpProtocolError
 from dsp.protocols.http.urls import (
     MAX_HOSTS_DEFAULT,
-    MAX_REQUESTS_PER_HOST_DEFAULT,
-    MAX_REQUESTS_TOTAL_DEFAULT,
     build_url,
 )
 
@@ -73,8 +71,26 @@ SQLI_PATHS: tuple[str, ...] = (
 )
 
 SQLI_SUSPECTED_QUERY_CATEGORY = "suspected_query"
+SQLI_CORE_TIME_BASED_CATEGORY = "core_time_based"
+SQLI_CORE_UNION_SELECT_CATEGORY = "core_union_select"
+# Historical full-pool multiplicity (53 paths x 3). Volume is driven by max_per_host.
 SQLI_REPEATS_PER_PATH = 3
-SQLI_REQUESTS_PER_HOST = len(SQLI_PATHS) * SQLI_REPEATS_PER_PATH
+SQLI_REQUESTS_PER_HOST = 500
+# Sensor-aligned signature payloads — minimum repeats per discovered HTTP target.
+SQLI_CORE_REPEATS_PER_PATTERN = 10
+SQLI_CORE_SLEEP_SECONDS: tuple[int, ...] = (5, 6, 7, 8, 9, 5, 6, 7, 8, 10)
+SQLI_CORE_MD5_SEEDS: tuple[int, ...] = (
+    111111111,
+    999999999,
+    123456789,
+    222222222,
+    333333333,
+    444444444,
+    555555555,
+    666666666,
+    777777777,
+    888888888,
+)
 
 SQLI_PARAM_NAMES: tuple[str, ...] = (
     "id",
@@ -100,6 +116,12 @@ SQLI_PAYLOAD_CATEGORIES: dict[str, tuple[str, ...]] = {
         "' UNION SELECT NULL--",
         "' UNION SELECT 1,2,3--",
         "1 UNION SELECT user(),database()--",
+    ),
+    "core_time_based": (
+        "1' AND (SELECT 1 FROM (SELECT(SLEEP(6)))a)-- -",
+    ),
+    "core_union_select": (
+        "-1 UNION SELECT 1,MD5(999999999),3--",
     ),
     "time_based": (
         "' OR SLEEP(5)--",
@@ -225,6 +247,60 @@ def _split_suspected_query(suspected: str) -> tuple[str, str]:
     return suspected, ""
 
 
+def _param_payload_base_paths(paths: tuple[str, ...]) -> tuple[str, ...]:
+    """Derive clean URI paths (no query) from the existing SQLi path pool."""
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for item in paths:
+        base = item.split("?", 1)[0].strip() or "/"
+        if not base.startswith("/"):
+            base = f"/{base}"
+        if base not in seen:
+            seen.add(base)
+            ordered.append(base)
+    return tuple(ordered) if ordered else ("/",)
+
+
+def build_core_time_based_payload(sleep_seconds: int) -> str:
+    """Time-based SQLi payload aligned to Suricata SLEEP() signatures."""
+    return f"1' AND (SELECT 1 FROM (SELECT(SLEEP({int(sleep_seconds)})))a)-- -"
+
+
+def build_core_union_select_payload(md5_seed: int) -> str:
+    """UNION SELECT SQLi payload with MD5() marker for sensor signatures."""
+    return f"-1 UNION SELECT 1,MD5({int(md5_seed)}),3--"
+
+
+def core_time_based_payloads(
+    *,
+    count: int = SQLI_CORE_REPEATS_PER_PATTERN,
+) -> tuple[str, ...]:
+    """Return ``count`` time-based payloads with sleep-second variation."""
+    if count < 1:
+        return ()
+    return tuple(
+        build_core_time_based_payload(
+            SQLI_CORE_SLEEP_SECONDS[index % len(SQLI_CORE_SLEEP_SECONDS)]
+        )
+        for index in range(count)
+    )
+
+
+def core_union_select_payloads(
+    *,
+    count: int = SQLI_CORE_REPEATS_PER_PATTERN,
+) -> tuple[str, ...]:
+    """Return ``count`` UNION SELECT payloads with MD5 seed variation."""
+    if count < 1:
+        return ()
+    return tuple(
+        build_core_union_select_payload(
+            SQLI_CORE_MD5_SEEDS[index % len(SQLI_CORE_MD5_SEEDS)]
+        )
+        for index in range(count)
+    )
+
+
 def _build_suspected_query_request(
     host: str,
     port: int,
@@ -243,6 +319,75 @@ def _build_suspected_query_request(
         query=embedded_query,
         encode_query=False,
     )
+
+
+def _build_param_payload_request(
+    host: str,
+    port: int,
+    *,
+    path: str,
+    parameter: str,
+    payload: str,
+    payload_category: str,
+) -> PlannedSqliRequest:
+    """Build a GET request with payload as a single-encoded query parameter value."""
+    # Encode once only — build_sqli_url must not re-encode (encode_query=False).
+    encoded_value = quote(payload, safe="")
+    query = f"{parameter}={encoded_value}"
+    return PlannedSqliRequest(
+        host=host,
+        port=port,
+        path=path,
+        parameter=parameter,
+        payload=payload,
+        payload_category=payload_category,
+        transport="query",
+        method="GET",
+        query=query,
+        encode_query=False,
+    )
+
+
+def _plan_core_signature_requests(
+    host: str,
+    port: int,
+    *,
+    paths: tuple[str, ...],
+    repeats_per_pattern: int = SQLI_CORE_REPEATS_PER_PATTERN,
+) -> list[PlannedSqliRequest]:
+    """Plan sensor-aligned core SQLi signatures as query-parameter GETs."""
+    base_paths = _param_payload_base_paths(paths)
+    plans: list[PlannedSqliRequest] = []
+    seq = 0
+    for payload in core_time_based_payloads(count=repeats_per_pattern):
+        path = base_paths[seq % len(base_paths)]
+        parameter = SQLI_PARAM_NAMES[seq % len(SQLI_PARAM_NAMES)]
+        plans.append(
+            _build_param_payload_request(
+                host,
+                port,
+                path=path,
+                parameter=parameter,
+                payload=payload,
+                payload_category=SQLI_CORE_TIME_BASED_CATEGORY,
+            )
+        )
+        seq += 1
+    for payload in core_union_select_payloads(count=repeats_per_pattern):
+        path = base_paths[seq % len(base_paths)]
+        parameter = SQLI_PARAM_NAMES[seq % len(SQLI_PARAM_NAMES)]
+        plans.append(
+            _build_param_payload_request(
+                host,
+                port,
+                path=path,
+                parameter=parameter,
+                payload=payload,
+                payload_category=SQLI_CORE_UNION_SELECT_CATEGORY,
+            )
+        )
+        seq += 1
+    return plans
 
 
 def sql_injection_request_items(plans: list[PlannedSqliRequest]) -> list[dict[str, Any]]:
@@ -266,20 +411,32 @@ def plan_sqli_requests(
     *,
     endpoints: list[tuple[str, int]],
     max_hosts: int = MAX_HOSTS_DEFAULT,
-    max_per_host: int = MAX_REQUESTS_PER_HOST_DEFAULT,
-    max_total: int = MAX_REQUESTS_TOTAL_DEFAULT,
+    max_per_host: int = SQLI_REQUESTS_PER_HOST,
+    max_total: int | None = None,
     paths: tuple[str, ...] = SQLI_PATHS,
-    repeats_per_path: int = SQLI_REPEATS_PER_PATH,
+    repeats_per_path: int | None = None,
+    include_core_signatures: bool = True,
+    core_repeats_per_pattern: int = SQLI_CORE_REPEATS_PER_PATTERN,
 ) -> list[PlannedSqliRequest]:
     """
     Plan SQL injection HTTP GET requests across explicit endpoints.
 
-    Each selected endpoint receives every suspected query in ``paths`` exactly
-    ``repeats_per_path`` times (default: 53 paths x 3 repeats = 159 requests).
+    Default volume is ``max_per_host`` requests per endpoint. When
+    ``include_core_signatures`` is True (normal/default path), each host first
+    receives time-based and UNION SELECT signature payloads (query parameters),
+    then remaining slots are filled by cycling ``paths``.
+
+    When ``repeats_per_path`` is set explicitly, legacy path-only mode is used
+    (no core signatures) so encoding/parity fixtures stay stable.
     """
-    del max_per_host, max_total  # volume is fixed by path pool and repeat count
-    if max_hosts < 1 or repeats_per_path < 1:
+    if max_total is None:
+        max_total = max_per_host * max(1, max_hosts)
+    if max_hosts < 1 or max_per_host < 1 or max_total < 1:
         raise HttpProtocolError("request caps must be positive")
+    if repeats_per_path is not None and repeats_per_path < 1:
+        raise HttpProtocolError("repeats_per_path must be positive")
+    if core_repeats_per_pattern < 1:
+        raise HttpProtocolError("core_repeats_per_pattern must be positive")
     if not paths:
         raise HttpProtocolError("at least one path is required")
 
@@ -289,10 +446,34 @@ def plan_sqli_requests(
     if not selected:
         raise HttpProtocolError("at least one endpoint is required")
 
+    legacy_path_mode = repeats_per_path is not None
+    if legacy_path_mode:
+        target_per_host = min(max_per_host, len(paths) * int(repeats_per_path))
+        emit_core = False
+    else:
+        target_per_host = max_per_host
+        emit_core = include_core_signatures
+
     plans: list[PlannedSqliRequest] = []
     for host, port in selected:
-        for suspected in paths:
-            for _ in range(repeats_per_path):
-                plans.append(_build_suspected_query_request(host, port, suspected))
+        host_sent = 0
+        if emit_core:
+            for core_plan in _plan_core_signature_requests(
+                host,
+                port,
+                paths=paths,
+                repeats_per_pattern=core_repeats_per_pattern,
+            ):
+                if host_sent >= target_per_host or len(plans) >= max_total:
+                    break
+                plans.append(core_plan)
+                host_sent += 1
+
+        path_idx = 0
+        while host_sent < target_per_host and len(plans) < max_total:
+            suspected = paths[path_idx % len(paths)]
+            plans.append(_build_suspected_query_request(host, port, suspected))
+            path_idx += 1
+            host_sent += 1
 
     return plans

@@ -31,8 +31,8 @@ _DGA_DOMAIN_COUNTS: dict[str, dict[str, int]] = {
 # Shared normal-volume templates reused by high (coverage expands via host_cap).
 _HTTP_FOLLOWUP_NORMAL: dict[str, Any] = {
     "max_hosts": 2,
-    "max_per_host": 150,
-    "max_total": 300,
+    "max_per_host": 500,
+    "max_total": 1000,
     "timeout": 2.0,
     "concurrency": 32,
     "include_attack_paths": True,
@@ -47,8 +47,8 @@ _SSH_FAILURE_NORMAL: dict[str, Any] = {
 }
 _SQL_INJECTION_NORMAL: dict[str, Any] = {
     "max_hosts": 2,
-    "max_per_host": 159,
-    "max_total": 318,
+    "max_per_host": 500,
+    "max_total": 1000,
     "timeout": 10.0,
 }
 _RARE_PROTOCOL_NORMAL: dict[str, Any] = {

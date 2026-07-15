@@ -17,7 +17,7 @@ def test_http_followup_request_detail_output() -> None:
             "scenario_id": "http_followup",
             "kind": "detail",
             "seq": 1,
-            "total": 300,
+            "total": 1000,
             "action": "request",
             "target": "221.139.249.110:80",
             "method": "GET",
@@ -29,7 +29,7 @@ def test_http_followup_request_detail_output() -> None:
         },
     )
     output = buf.getvalue()
-    assert "[http_followup] request 1/300" in output
+    assert "[http_followup] request 1/1000" in output
     assert "url=http://221.139.249.110/WEB-INF/web.xml" in output
     assert 'user_agent="ThreatHunterAgent/8.2"' in output
     assert "response_code=301" in output
@@ -43,13 +43,13 @@ def test_http_followup_completed_shows_evidence_file() -> None:
         {
             "scenario_id": "http_followup",
             "metrics": {
-                "http_request_sent_count": 300,
-                "http_response_received_count": 300,
+                "http_request_sent_count": 1000,
+                "http_response_received_count": 1000,
             },
             "extras": {
                 "unique_paths": 16,
                 "unique_user_agents": 47,
-                "malicious_rare_ua_count": 300,
+                "malicious_rare_ua_count": 1000,
                 "response_tracking": "disabled_webshell_mode",
             },
             "artifacts": {

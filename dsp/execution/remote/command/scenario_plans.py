@@ -309,8 +309,8 @@ def plan_http_followup(targets: TargetSet, params: dict[str, Any], *, dry_run: b
     plans = plan_followup_requests(
         endpoints=endpoints,
         max_hosts=max_hosts,
-        max_per_host=int(params.get("max_per_host", 10)),
-        max_total=int(params.get("max_total", 20)),
+        max_per_host=int(params.get("max_per_host", 500)),
+        max_total=int(params.get("max_total", 1000)),
         include_attack_paths=bool(params.get("include_attack_paths", True)),
     )
     enriched_plans, _ = attach_followup_user_agents(plans)
@@ -344,7 +344,12 @@ def plan_sql_injection(targets: TargetSet, params: dict[str, Any], *, dry_run: b
         return {"type": "sql_injection", "mode": "skip", "reason": "no_http_endpoints"}
 
     endpoints = [(ep.host, ep.port) for ep in selection.selected]
-    plans = plan_sqli_requests(endpoints=endpoints, max_hosts=max_hosts)
+    plans = plan_sqli_requests(
+        endpoints=endpoints,
+        max_hosts=max_hosts,
+        max_per_host=int(params.get("max_per_host", 500)),
+        max_total=int(params.get("max_total", 1000)),
+    )
     requests = sql_injection_request_items(plans)
     return {
         "type": "sql_injection",

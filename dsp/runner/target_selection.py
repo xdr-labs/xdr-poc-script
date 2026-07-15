@@ -158,8 +158,8 @@ def scenario_start_metadata(
         from dsp.protocols.http.urls import compute_requests_per_target, plan_followup_requests
 
         max_hosts = int(params.get("max_hosts", 3))
-        max_per_host = int(params.get("max_per_host", 150))
-        max_total = int(params.get("max_total", 300))
+        max_per_host = int(params.get("max_per_host", 500))
+        max_total = int(params.get("max_total", 1000))
         min_requests_per_target = int(params.get("min_requests_per_target", 100))
         timeout = float(params.get("timeout", 2.0))
         selection = resolve_http_endpoint_selection(

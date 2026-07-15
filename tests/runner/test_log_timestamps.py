@@ -60,7 +60,7 @@ def test_console_timestamps_on_key_events() -> None:
     )
     console.handle_progress(
         "scenario_completed",
-        {"scenario_id": "sql_injection", "metrics": {"sql_injection_request_sent_count": 318}},
+        {"scenario_id": "sql_injection", "metrics": {"sql_injection_request_sent_count": 1000}},
     )
     console.handle_progress(
         "scenario_skipped",

@@ -4,7 +4,7 @@ name: SQL Injection — Safe HTTP Request Patterns
 version: "1.0.0"
 description: >
   Generates detectable SQL injection request patterns via HTTP GET query strings.
-  Max 2 hosts, 10 requests per host, 20 requests total. Not a vulnerability scanner
+  Max 2 hosts, 500 requests per host, 1000 requests total. Not a vulnerability scanner
   or exploitation tool — safe payload strings only.
 
 category: web
@@ -51,12 +51,12 @@ report_profile:
 
 defaults:
   max_hosts: 2
-  max_per_host: 10
-  max_total: 20
+  max_per_host: 500
+  max_total: 1000
   timeout: 10.0
 
 safety:
-  max_events: 500
+  max_events: 5000
   max_duration_sec: 300
   allowed_domains: []
   allowed_ports: [80, 8080, 8000, 8008, 8888, 9000]

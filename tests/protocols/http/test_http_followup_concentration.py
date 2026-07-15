@@ -33,44 +33,44 @@ REQUIRED_SCAN_PATHS = (
 def test_normal_profile_http_followup_dual_target_scaling():
     params = scenario_params_for_profile("http_followup", "normal")
     assert params["max_hosts"] == 2
-    assert params["max_total"] == 300
-    assert params["max_per_host"] == 150
+    assert params["max_total"] == 1000
+    assert params["max_per_host"] == 500
     assert "abnormal_ua_ratio" not in params
 
 
-def test_compute_requests_per_target_two_hosts_150_each():
-    assert compute_requests_per_target(2, 300) == 150
+def test_compute_requests_per_target_two_hosts_500_each():
+    assert compute_requests_per_target(2, 1000) == 500
 
 
-def test_plan_followup_dual_target_150_requests_each():
+def test_plan_followup_dual_target_500_requests_each():
     plans = plan_followup_requests(
         endpoints=[("10.0.0.1", 8080), ("10.0.0.2", 8080)],
         max_hosts=2,
-        max_per_host=150,
-        max_total=300,
+        max_per_host=500,
+        max_total=1000,
         include_attack_paths=True,
     )
-    assert len(plans) == 300
+    assert len(plans) == 1000
     counts: dict[str, int] = {}
     for plan in plans:
         key = f"{plan.host}:{plan.port}"
         counts[key] = counts.get(key, 0) + 1
-    assert counts["10.0.0.1:8080"] == 150
-    assert counts["10.0.0.2:8080"] == 150
+    assert counts["10.0.0.1:8080"] == 500
+    assert counts["10.0.0.2:8080"] == 500
 
 
 def test_attach_followup_user_agents_all_suspicious():
     plans = plan_followup_requests(
         endpoints=[("10.0.0.1", 80), ("10.0.0.2", 80)],
         max_hosts=2,
-        max_per_host=150,
-        max_total=300,
+        max_per_host=500,
+        max_total=1000,
         include_attack_paths=True,
     )
     enriched, stats = attach_followup_user_agents(plans)
-    assert len(enriched) == 300
+    assert len(enriched) == 1000
     assert stats["user_agent_policy"] == URL_SCAN_USER_AGENT_POLICY
-    assert stats["abnormal_user_agents_planned"] == 300
+    assert stats["abnormal_user_agents_planned"] == 1000
     assert stats["normal_user_agents_planned"] == 0
     assert stats["abnormal_user_agent_ratio"] == 1.0
     abnormal = sum(
@@ -78,7 +78,7 @@ def test_attach_followup_user_agents_all_suspicious():
         for plan in enriched
         if is_abnormal_user_agent((plan.headers or {}).get("User-Agent", ""))
     )
-    assert abnormal == 300
+    assert abnormal == 1000
 
 
 def test_payload_recon_paths_include_required_scan_paths():

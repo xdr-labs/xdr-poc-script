@@ -43,7 +43,11 @@ def test_sql_injection_dry_run_e2e(tmp_runs_dir):
     report = (run_dir / "report.md").read_text()
     assert "## SQL Injection Details" in report
     assert "sql_payload_generated_count" in report
-    assert "raygun4wp" in report or "dvwa" in report or "suspected_query" in report
+    # Sample URLs come from the first planned requests (path pool cycles from the start).
+    assert any(
+        token in report
+        for token in ("WEB-INF", "shell.jsp", "/login", "dvwa", "raygun4wp", "suspected_query")
+    )
 
 
 def test_sql_injection_live_e2e(tmp_runs_dir, mock_curl_http):

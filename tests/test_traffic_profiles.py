@@ -131,21 +131,21 @@ def test_build_scenario_params_applies_overrides() -> None:
 def test_profile_for_scenario_includes_scenario_params() -> None:
     profile = profile_for_scenario("http_followup", "high")
     assert profile.name == "high"
-    assert profile.scenario_params["max_total"] == 300
-    assert profile.scenario_params["max_per_host"] == 150
+    assert profile.scenario_params["max_total"] == 1000
+    assert profile.scenario_params["max_per_host"] == 500
 
 
 def test_normal_profile_http_followup_dual_target_v139() -> None:
     params = scenario_params_for_profile("http_followup", "normal")
     assert params.get("include_attack_paths") is True
     assert params["max_hosts"] == 2
-    assert params["max_total"] == 300
-    assert params["max_per_host"] == 150
+    assert params["max_total"] == 1000
+    assert params["max_per_host"] == 500
     assert "abnormal_ua_ratio" not in params
 
 
-def test_normal_profile_sql_injection_318_requests_v139() -> None:
+def test_normal_profile_sql_injection_1000_requests_v139() -> None:
     params = scenario_params_for_profile("sql_injection", "normal")
-    assert params["max_total"] == 318
-    assert params["max_per_host"] == 159
+    assert params["max_total"] == 1000
+    assert params["max_per_host"] == 500
     assert params["max_hosts"] == 2

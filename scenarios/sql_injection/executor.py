@@ -26,12 +26,11 @@ from dsp.protocols.http.sqli_events import (
 )
 from dsp.protocols.http.sqli_payloads import (
     SQLI_PAYLOAD_CATEGORIES,
+    SQLI_REQUESTS_PER_HOST,
     plan_sqli_requests,
 )
 from dsp.protocols.http.urls import (
     MAX_HOSTS_DEFAULT,
-    MAX_REQUESTS_PER_HOST_DEFAULT,
-    MAX_REQUESTS_TOTAL_DEFAULT,
 )
 from dsp.protocols.types import HttpRequest
 
@@ -173,8 +172,8 @@ def run(
     """Plan and execute SQL injection HTTP requests; append events to Event Store."""
     params = config or {}
     max_hosts = int(params.get("max_hosts", MAX_HOSTS_DEFAULT))
-    max_per_host = int(params.get("max_per_host", MAX_REQUESTS_PER_HOST_DEFAULT))
-    max_total = int(params.get("max_total", MAX_REQUESTS_TOTAL_DEFAULT))
+    max_per_host = int(params.get("max_per_host", SQLI_REQUESTS_PER_HOST))
+    max_total = int(params.get("max_total", max_per_host * max(1, max_hosts)))
     write_wire_evidence = bool(params.get("write_wire_evidence", False))
     source = "dry_run" if ctx.dry_run else "local"
     mode = "mock" if ctx.dry_run else "live"

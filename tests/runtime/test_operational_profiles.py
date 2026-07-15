@@ -89,8 +89,8 @@ def test_build_operational_scenario_params_caps_hosts_for_normal() -> None:
         target_net="10.10.10.0/24",
     )
     assert params["http_followup"]["max_hosts"] == 2
-    assert params["http_followup"]["max_per_host"] == 150
-    assert params["http_followup"]["max_total"] == 300
+    assert params["http_followup"]["max_per_host"] == 500
+    assert params["http_followup"]["max_total"] == 1000
     assert "abnormal_ua_ratio" not in params["http_followup"]
     assert params["dns_tunnel"]["traffic_profile"] == "normal"
     assert params["dns_tunnel"]["payload_mb"] == 1.0
@@ -105,7 +105,7 @@ def test_build_operational_scenario_params_uses_all_hosts_for_high() -> None:
         target_net="192.168.55.0/30",
     )
     assert params["http_followup"]["max_hosts"] == 2
-    assert params["http_followup"]["max_per_host"] == 150
+    assert params["http_followup"]["max_per_host"] == 500
     assert params["http_followup"]["traffic_profile"] == "high"
 
 
@@ -165,5 +165,5 @@ def test_high_scales_max_total_when_hosts_expand() -> None:
     assert params["ssh_failure"]["max_per_host"] == 150
     assert params["ssh_failure"]["max_hosts"] == 254
     assert params["ssh_failure"]["max_total"] == 150 * 254
-    assert params["http_followup"]["max_per_host"] == 150
-    assert params["http_followup"]["max_total"] == 150 * 254
+    assert params["http_followup"]["max_per_host"] == 500
+    assert params["http_followup"]["max_total"] == 500 * 254

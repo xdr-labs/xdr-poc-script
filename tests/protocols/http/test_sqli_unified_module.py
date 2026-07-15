@@ -58,14 +58,19 @@ def _cache_params(params: dict) -> None:
 def test_sqli_paths_count_is_53() -> None:
     assert len(SQLI_PATHS) == 53
     assert SQLI_REPEATS_PER_PATH == 3
-    assert SQLI_REQUESTS_PER_HOST == 159
+    assert SQLI_REQUESTS_PER_HOST == 500
 
 
 def test_sqli_requests_per_single_target() -> None:
     plans = plan_sqli_requests(endpoints=[("10.10.10.20", 8080)], max_hosts=1)
-    assert len(plans) == 159
+    assert len(plans) == 500
     assert all(p.transport == "query" for p in plans)
-    assert all(p.payload_category == "suspected_query" for p in plans)
+    categories = {p.payload_category for p in plans}
+    assert "core_time_based" in categories
+    assert "core_union_select" in categories
+    assert "suspected_query" in categories
+    assert sum(1 for p in plans if p.payload_category == "core_time_based") >= 10
+    assert sum(1 for p in plans if p.payload_category == "core_union_select") >= 10
 
 
 def test_sqli_requests_per_two_targets() -> None:
@@ -73,7 +78,7 @@ def test_sqli_requests_per_two_targets() -> None:
         endpoints=[("10.10.10.20", 8080), ("10.10.10.21", 9000)],
         max_hosts=2,
     )
-    assert len(plans) == 318
+    assert len(plans) == 1000
 
 
 def test_sqli_urls_are_not_double_encoded() -> None:
@@ -114,9 +119,9 @@ def test_local_remote_and_webshell_use_common_sqli_module() -> None:
         dry_run=False,
     )
 
-    assert len(direct) == 159
-    assert len(local_plan["requests"]) == 159
-    assert len(remote_plan["requests"]) == 159
+    assert len(direct) == 500
+    assert len(local_plan["requests"]) == 500
+    assert len(remote_plan["requests"]) == 500
     assert {item["url"] for item in local_plan["requests"]} == {
         item["url"] for item in remote_plan["requests"]
     }

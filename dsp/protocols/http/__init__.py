@@ -46,6 +46,9 @@ from dsp.protocols.http.sqli_events import (
     build_sql_response_received_event,
 )
 from dsp.protocols.http.sqli_payloads import (
+    SQLI_CORE_REPEATS_PER_PATTERN,
+    SQLI_CORE_TIME_BASED_CATEGORY,
+    SQLI_CORE_UNION_SELECT_CATEGORY,
     SQLI_PATHS,
     SQLI_PAYLOADS,
     SQLI_REPEATS_PER_PATH,
@@ -73,6 +76,9 @@ __all__ = [
     "MAX_REQUESTS_PER_HOST_DEFAULT",
     "MAX_REQUESTS_TOTAL_DEFAULT",
     "PORT_PRIORITY",
+    "SQLI_CORE_REPEATS_PER_PATTERN",
+    "SQLI_CORE_TIME_BASED_CATEGORY",
+    "SQLI_CORE_UNION_SELECT_CATEGORY",
     "SQLI_PATHS",
     "SQLI_PAYLOADS",
     "SQLI_REPEATS_PER_PATH",

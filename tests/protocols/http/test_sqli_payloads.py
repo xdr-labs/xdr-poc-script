@@ -55,8 +55,11 @@ def test_plan_sqli_requests_two_hosts_fixed_volume():
 
 def test_plan_sqli_requests_use_suspected_query_category():
     plans = plan_sqli_requests(endpoints=[("10.10.10.20", 8080)], max_hosts=1)
-    assert plans[0].payload_category == "suspected_query"
+    assert plans[0].payload_category == "core_time_based"
     assert plans[0].method == "GET"
+    categories = {p.payload_category for p in plans}
+    assert "suspected_query" in categories
+    assert "core_union_select" in categories
 
 
 def test_planned_sqli_request_url_property():

@@ -36,7 +36,7 @@ def _lab_targets() -> TargetSet:
   )
 
 
-def test_normal_profile_http_followup_300_suspicious_ua() -> None:
+def test_normal_profile_http_followup_1000_suspicious_ua() -> None:
     params = scenario_params_for_profile("http_followup", "normal")
     plans = plan_followup_requests(
         endpoints=[("10.10.10.1", 8888), ("10.10.10.20", 80)],
@@ -46,12 +46,12 @@ def test_normal_profile_http_followup_300_suspicious_ua() -> None:
         include_attack_paths=True,
     )
     enriched, stats = attach_followup_user_agents(plans)
-    assert len(enriched) == 300
-    assert stats["abnormal_user_agents_planned"] == 300
+    assert len(enriched) == 1000
+    assert stats["abnormal_user_agents_planned"] == 1000
     assert stats["normal_user_agents_planned"] == 0
 
 
-def test_normal_profile_sql_injection_318_two_targets() -> None:
+def test_normal_profile_sql_injection_1000_two_targets() -> None:
     params = scenario_params_for_profile("sql_injection", "normal")
     plans = plan_sqli_requests(
         endpoints=[("10.10.10.1", 8888), ("10.10.10.20", 80)],
@@ -59,8 +59,8 @@ def test_normal_profile_sql_injection_318_two_targets() -> None:
         max_per_host=params["max_per_host"],
         max_total=params["max_total"],
     )
-    assert len(plans) == 318
-    assert params["max_per_host"] == 159
+    assert len(plans) == 1000
+    assert params["max_per_host"] == 500
 
 
 def test_normal_profile_ssh_failure_150_attempts() -> None:
