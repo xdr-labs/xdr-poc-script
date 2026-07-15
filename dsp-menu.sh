@@ -476,8 +476,31 @@ do_show_status() {
 
 main() {
   ensure_config_dir
-  # Use Ubuntu/system whiptail palette (/etc/newt/palette); do not override NEWT_COLORS.
-  unset NEWT_COLORS NEWT_COLORS_FILE
+  # Ubuntu's /etc/newt/palette uses entry=,magenta — typed CIDR text is nearly
+  # invisible (dark red on magenta). Force a high-contrast entry field.
+  export NEWT_COLORS='
+root=white,blue
+border=black,white
+window=black,white
+shadow=black,gray
+title=black,white
+button=black,white
+buttonact=white,blue
+compactbutton=black,white
+checkbox=black,white
+entry=black,white
+disentry=gray,white
+label=black,white
+listbox=black,white
+actlistbox=white,blue
+actsellistbox=black,cyan
+textbox=black,white
+acttextbox=black,cyan
+helpline=white,blue
+roottext=white,blue
+emptyscale=white,blue
+'
+  unset NEWT_COLORS_FILE
   while true; do
     choice="$(pick_choice || true)"
     case "${choice:-}" in
