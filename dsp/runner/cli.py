@@ -112,10 +112,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     run_parser.add_argument(
         "--profile",
-        choices=["low", "normal", "high"],
+        type=parse_operational_profile,
+        metavar="{normal,high}",
+        default=None,
         help=(
-            "Operational profile: low (quick validation), normal (default validation), "
-            "high (maximum coverage). Default when --scenarios is omitted: normal."
+            "Operational profile: normal (default — limited representative targets), "
+            "high (same per-target volume, all discovered targets). "
+            "Default when --scenarios is omitted: normal. "
+            "Legacy aliases: low/balanced→normal, burst→high."
         ),
     )
     run_parser.add_argument("--dry-run", action="store_true", help="Dry-run mode (no network)")

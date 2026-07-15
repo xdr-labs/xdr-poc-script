@@ -112,6 +112,12 @@ load_config() {
   # shellcheck disable=SC1090
   source "$CONFIG_FILE"
 
+  # Legacy profile names (low removed; balanced/burst aliases).
+  case "${PROFILE,,}" in
+    low|balanced) PROFILE="normal" ;;
+    burst) PROFILE="high" ;;
+  esac
+
   if [[ ! -d "$DSP_REPO_DIR" ]]; then
     DSP_REPO_DIR="$DEFAULT_REPO_DIR"
   fi
@@ -255,11 +261,10 @@ Examples:
     REMOTE_WORK_DIR="${value//$'\n'/}"
   fi
 
-  value="$(whiptail --title "Configure" --menu "Traffic profile" 14 72 3 \
+  value="$(whiptail --title "Configure" --menu "Traffic profile" 14 72 2 \
     --default-item "$PROFILE" \
-    "low" "Conservative volume" \
-    "normal" "Default operational profile" \
-    "high" "High volume" \
+    "normal" "Default — limited representative targets" \
+    "high" "Same volume, all discovered targets" \
     3>&1 1>&2 2>&3)" || return 1
   PROFILE="${value//$'\n'/}"
 
@@ -302,7 +307,7 @@ configure_plain() {
     printf '\n'
   fi
 
-  printf 'Profile (low/normal/high) [%s]: ' "$PROFILE"
+  printf 'Profile (normal/high) [%s]: ' "$PROFILE"
   read -r value
   [[ -n "$value" ]] && PROFILE="$value"
 

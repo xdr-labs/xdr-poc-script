@@ -6,18 +6,20 @@ from typing import Any
 
 # Named profiles for operator-controlled execution volume.
 # Explicit scenario_params keys always override profile values.
+# Align with operational traffic profiles: normal·high 1.0 MB per target.
 VOLUME_PROFILES: dict[str, dict[str, Any]] = {
     "demo": {
         "payload_mb": 1.0,
         "max_hosts": 1,
     },
     "standard": {
-        "payload_mb": 2.0,
+        "payload_mb": 1.0,
         "chunk_size": 30,
         "max_hosts": 1,
     },
     "stress": {
-        "payload_mb": 4.0,
+        # Same per-target payload as standard; host fan-out comes from operational high.
+        "payload_mb": 1.0,
         "chunk_size": 30,
         "max_hosts": 1,
     },

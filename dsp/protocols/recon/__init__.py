@@ -14,6 +14,7 @@ from dsp.protocols.recon.port_sweep_events import (
     PORT_CONNECTION_OPENED,
     PORT_PROBE_SENT,
     PORT_SWEEP_COMPLETED,
+    PORT_SWEEP_SKIPPED,
     PORT_SWEEP_STARTED,
     PORT_SWEEP_TRAFFIC_EVENTS,
     append_outcome_events,
@@ -21,6 +22,7 @@ from dsp.protocols.recon.port_sweep_events import (
     build_port_connection_opened_event,
     build_port_probe_sent_event,
     build_port_sweep_completed_event,
+    build_port_sweep_skipped_event,
     build_port_sweep_started_event,
 )
 from dsp.protocols.recon.port_sweep_reporting import (
@@ -42,6 +44,7 @@ __all__ = [
     "PORT_PROBE_SENT",
     "PORT_SWEEP_COMPLETED",
     "PORT_SWEEP_METRIC_NAMES",
+    "PORT_SWEEP_SKIPPED",
     "PORT_SWEEP_STARTED",
     "PORT_SWEEP_TRAFFIC_EVENTS",
     "PlannedPortProbe",
@@ -52,6 +55,7 @@ __all__ = [
     "build_port_probe_sent_event",
     "build_port_sweep_completed_event",
     "build_port_sweep_report_section",
+    "build_port_sweep_skipped_event",
     "build_port_sweep_started_event",
     "plan_port_sweep",
     "port_sweep_report_profile",

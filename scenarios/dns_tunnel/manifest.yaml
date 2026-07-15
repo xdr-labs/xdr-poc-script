@@ -61,7 +61,7 @@ report_profile:
 
 defaults:
   volume_profile: standard
-  payload_mb: 2.0
+  payload_mb: 1.0
   chunk_size: 30
   domain: "dns-tunnel.com"
   max_hosts: 2

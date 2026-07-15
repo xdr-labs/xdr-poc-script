@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from dsp.engine.scenario_engine import RunContext, TargetSet
+from dsp.engine.scenario_engine import RunContext, ScenarioSkipError, TargetSet
 from dsp.protocols.recon import (
     DEFAULT_PORTS,
     MAX_HOSTS_DEFAULT,
@@ -15,6 +15,7 @@ from dsp.protocols.recon import (
     append_outcome_events,
     build_port_probe_sent_event,
     build_port_sweep_completed_event,
+    build_port_sweep_skipped_event,
     build_port_sweep_started_event,
     plan_port_sweep,
 )
@@ -75,7 +76,24 @@ def run(
         safe_mode=safe_mode,
     )
 
-    hosts = select_port_sweep_hosts(targets, params, max_hosts=max_hosts)
+    hosts, selection_reason = _select_port_sweep_hosts(targets, params, max_hosts=max_hosts)
+    if not hosts or selection_reason == "no_alive_hosts":
+        reason = "no_alive_hosts"
+        ctx.event_store.append(
+            build_port_sweep_skipped_event(
+                run_id=ctx.run_id,
+                scenario_id=scenario_id,
+                source=source,
+                evidence={
+                    "reason": reason,
+                    "selection_reason": selection_reason,
+                    "hosts": [],
+                    "discovery": targets.discovery_enabled,
+                },
+            )
+        )
+        raise ScenarioSkipError(reason)
+
     ports = _resolve_ports(params, max_ports)
     plans = plan_port_sweep(
         hosts,
@@ -106,6 +124,7 @@ def run(
                 "mode": mode,
                 "safe_mode": safe_mode,
                 "discovery": targets.discovery_enabled,
+                "selection_reason": selection_reason,
             },
         )
     )
@@ -204,6 +223,7 @@ def run(
                 "concurrency": concurrency,
                 "probes_per_second": probes_per_second,
                 "safe_mode": safe_mode,
+                "selection_reason": selection_reason,
             },
         )
     )

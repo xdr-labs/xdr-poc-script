@@ -55,7 +55,7 @@ try:
             "dsp.runner.cli",
             "run",
             "--profile",
-            "low",
+            "normal",
             "--execution-provider",
             "webshell",
             "--webshell-family",

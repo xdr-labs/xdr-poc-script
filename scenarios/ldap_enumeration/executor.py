@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
 from dsp.engine.host_selection import select_hosts_for_capability
 from dsp.engine.scenario_engine import RunContext, TargetSet
+from dsp.event_store import Event
 from dsp.runner.activity_reporter import ActivityReporter
 from dsp.protocols.ldap import (
     DEFAULT_SAFE_FILTERS,
@@ -64,6 +66,51 @@ def run(
 
     hosts = select_ldap_hosts(targets, params, max_hosts=max_hosts)
     ports = _resolve_ports(params)
+    if not hosts:
+        # Discovery-first: empty ldap_hosts bucket => skip (do not abort).
+        ActivityReporter(ctx, scenario_id).emit_skipped(reason="no_ldap_hosts")
+        ctx.event_store.append(
+            Event(
+                run_id=ctx.run_id,
+                scenario_id=scenario_id,
+                timestamp=datetime.now(timezone.utc),
+                stage="executor",
+                event="ldap_enumeration_skipped",
+                status="info",
+                source=source,
+                evidence={
+                    "reason": "skipped_no_open_service: no ldap_hosts from discovery",
+                    "skipped_no_open_service": True,
+                    "hosts": [],
+                    "ports": list(ports),
+                    "connection_attempt_count": 0,
+                    "bind_attempt_count": 0,
+                    "search_attempt_count": 0,
+                },
+            )
+        )
+        ctx.event_store.append(
+            build_ldap_enum_completed_event(
+                run_id=ctx.run_id,
+                scenario_id=scenario_id,
+                target=targets.target_net,
+                source=source,
+                evidence={
+                    "targets": [],
+                    "hosts": [],
+                    "ports": list(ports),
+                    "connection_attempt_count": 0,
+                    "bind_attempt_count": 0,
+                    "search_attempt_count": 0,
+                    "sample_filters": [],
+                    "duration_sec": 0.0,
+                    "safe_mode": safe_mode,
+                    "skipped_no_open_service": True,
+                },
+            )
+        )
+        return
+
     plans = plan_ldap_enumeration(
         hosts,
         max_hosts=max_hosts,

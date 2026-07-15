@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
 from dsp.engine.host_selection import select_hosts_for_capability
 from dsp.engine.scenario_engine import RunContext, TargetSet
+from dsp.event_store import Event
 from dsp.runner.activity_reporter import ActivityReporter
 from dsp.protocols.kerberos import (
     ATTEMPTS_PER_HOST_DEFAULT,
@@ -59,6 +61,50 @@ def run(
     )
 
     hosts = select_kerberos_hosts(targets, params, max_hosts=max_hosts)
+    if not hosts:
+        # Discovery-first: empty kerberos_hosts bucket => skip (do not abort).
+        ActivityReporter(ctx, scenario_id).emit_skipped(reason="no_kerberos_hosts")
+        ctx.event_store.append(
+            Event(
+                run_id=ctx.run_id,
+                scenario_id=scenario_id,
+                timestamp=datetime.now(timezone.utc),
+                stage="executor",
+                event="kerberos_failure_skipped",
+                status="info",
+                source=source,
+                evidence={
+                    "reason": "skipped_no_open_service: no kerberos_hosts from discovery",
+                    "skipped_no_open_service": True,
+                    "hosts": [],
+                    "port": port,
+                    "attempt_count": 0,
+                    "failure_count": 0,
+                },
+            )
+        )
+        ctx.event_store.append(
+            build_kerberos_scenario_completed_event(
+                run_id=ctx.run_id,
+                scenario_id=scenario_id,
+                target=targets.target_net,
+                source=source,
+                evidence={
+                    "targets": [],
+                    "hosts": [],
+                    "port": port,
+                    "realm": realm,
+                    "attempt_count": 0,
+                    "failure_count": 0,
+                    "duration_sec": 0.0,
+                    "sample_usernames": [],
+                    "safe_mode": safe_mode,
+                    "skipped_no_open_service": True,
+                },
+            )
+        )
+        return
+
     plans = plan_kerberos_attempts(
         hosts,
         max_hosts=max_hosts,

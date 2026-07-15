@@ -1,0 +1,76 @@
+# Critical gaps from WBS ↔ Code Traffic Audit, fixed as E2E regression rules.
+# Detected gaps must surface as FAIL or REVIEW — never silent PASS.
+
+rules:
+  no_empty_target_net_fallback:
+    description: empty target_net must not silently fallback to 10.10.10.20
+    expected: fail_closed_or_explicit_error
+    result_if_detected: FAIL
+    detect:
+      fallback_host: "10.10.10.20"
+      signals:
+        - empty_target_net_resolved_to_default_lab
+        - hosts_contain_10.10.10.20_without_explicit_target
+
+  no_port_sweep_cidr_expansion_without_discovery:
+    description: port_sweep must not expand CIDR when no discovered hosts exist
+    expected: skip_when_no_alive_hosts
+    result_if_detected: FAIL
+    detect:
+      selection_reasons:
+        - target_net_expansion
+      evidence_fields:
+        - host_selection_reason
+        - selection_reason
+        - selected_from
+
+  no_rare_protocol_localhost_fallback:
+    description: rare_protocol_activity must not fallback to 127.0.0.1
+    expected: skip_when_no_valid_target
+    result_if_detected: FAIL
+    detect:
+      forbidden_targets:
+        - "127.0.0.1"
+        - "::1"
+        - localhost
+
+  smb_login_failure_semantics:
+    description: smb_login_failure currently performs TCP/445 connect only
+    expected: mark_as_REVIEW unless actual SMB auth failure evidence exists
+    result_if_tcp_only: REVIEW
+    detect:
+      auth_event_names:
+        - smb_auth_attempt
+        - smb_auth_failed
+      tcp_only_signals:
+        - smb_connection_opened
+        - smb_connection_failed
+        - tcp.dstport == 445 without SMB auth events
+
+  phase1_webshell_host_targeting:
+    description: >
+      Charter Phase 1 expects webshell host targeted by URL/HTTP/SQLi/SSH/host behavior
+    expected: mark_as_REVIEW unless explicitly implemented or intentionally removed from charter
+    result_if_missing: REVIEW
+    detect:
+      phase_markers:
+        - phase1_webshell_attack
+        - initial_compromise_endpoint
+      required_when_provider: webshell
+
+  webshell_command_only:
+    description: >
+      webshell execution must not deploy DSP runtime, manifest, runner, or remote discovery scripts
+    forbidden_artifacts:
+      - manifest.json
+      - run_scenario.py
+      - remote_discovery.py
+      - DSP package files
+    forbidden_event_markers:
+      - manifest.json
+      - run_scenario.py
+      - remote_discovery.py
+      - discover_runner.py
+      - dsp-remote-scenario
+      - python3 /tmp/dsp/
+    result_if_detected: FAIL

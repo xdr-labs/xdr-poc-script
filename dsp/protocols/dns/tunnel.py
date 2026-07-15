@@ -15,7 +15,7 @@ from dsp.protocols.base import DnsProtocolError
 from dsp.protocols.dns.volume_profiles import apply_volume_profile
 
 CHUNK_SIZE_DEFAULT = 30
-PAYLOAD_MB_DEFAULT = 2.0
+PAYLOAD_MB_DEFAULT = 1.0
 DNS_TUNNEL_SESSION_MAX_TIMEOUT_SEC = 900
 TUNNEL_DOMAIN_DEFAULT = "dns-tunnel.com"
 MOCK_PAYLOAD_FILENAME = "mock_exfil.dat"

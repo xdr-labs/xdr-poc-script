@@ -261,6 +261,13 @@ def build_scenario_plan(request: ScenarioExecutionRequest, targets: TargetSet) -
 
 def plan_port_sweep(targets: TargetSet, params: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
     plan_view = build_port_sweep_plan_view(targets, params)
+    if not plan_view.selected_hosts or plan_view.selection_reason == "no_alive_hosts":
+        return {
+            "type": "port_sweep",
+            "mode": "skip",
+            "reason": "no_alive_hosts",
+            "selection_reason": plan_view.selection_reason,
+        }
     plans = build_port_sweep_plans(
         plan_view.selected_hosts,
         max_hosts=plan_view.max_hosts,
@@ -273,6 +280,7 @@ def plan_port_sweep(targets: TargetSet, params: dict[str, Any], *, dry_run: bool
         "mode": "mock" if dry_run else "live",
         "timeout": float(params.get("timeout", 3.0)),
         "concurrency": max(1, int(params.get("concurrency", 32))),
+        "selection_reason": plan_view.selection_reason,
         "probes": [
             {"host": plan.host, "port": plan.port, "artifact": plan.artifact}
             for plan in plans
@@ -406,7 +414,11 @@ def plan_rare_protocol_activity(
 ) -> dict[str, Any]:
     plans = build_rare_protocol_plans(targets, params)
     if not plans:
-        return {"type": "rare_protocol_activity", "mode": "skip", "reason": "no_probe_plans"}
+        return {
+            "type": "rare_protocol_activity",
+            "mode": "skip",
+            "reason": "no_valid_target",
+        }
     return {
         "type": "rare_protocol_activity",
         "mode": "mock" if dry_run else "live",

@@ -66,7 +66,7 @@ def test_webshell_normal_run_must_not_upload_manifest_or_runner(tmp_path: Path) 
     try:
         manager = RunManager(runs_dir=tmp_path / "runs")
         manager.run(
-            operational_profile="low",
+            operational_profile="normal",
             scenario_ids=["port_sweep"],
             target_net="127.0.0.0/30",
             dry_run=False,
@@ -94,7 +94,7 @@ def test_webshell_http_followup_uses_discovered_http_service_reason(tmp_path: Pa
     try:
         manager = RunManager(runs_dir=tmp_path / "runs")
         _, run_dir, exit_code = manager.run(
-            operational_profile="low",
+            operational_profile="normal",
             scenario_ids=["http_followup"],
             target_net="127.0.0.0/30",
             dry_run=False,
@@ -125,7 +125,7 @@ def test_webshell_dns_tunnel_uses_alive_hosts(tmp_path: Path) -> None:
     try:
         manager = RunManager(runs_dir=tmp_path / "runs")
         _, run_dir, exit_code = manager.run(
-            operational_profile="low",
+            operational_profile="normal",
             scenario_ids=["dns_tunnel"],
             target_net="127.0.0.0/30",
             dry_run=False,

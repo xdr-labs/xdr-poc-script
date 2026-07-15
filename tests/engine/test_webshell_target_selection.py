@@ -376,16 +376,22 @@ def test_followup_skipped_when_discovery_capability_missing(
     assert plan.get("mode") == "skip"
 
 
-def test_port_sweep_uses_target_net_when_no_alive_hosts() -> None:
+def test_port_sweep_skips_when_no_alive_hosts() -> None:
     plan = build_plan_from_discovery(
         "port_sweep",
-        {"target_net": "10.10.10.0/24", "hosts": [], "service_hosts": {}, "service_endpoints": {}},
+        {
+            "target_net": "10.10.10.0/24",
+            "hosts": [],
+            "service_hosts": {},
+            "service_endpoints": {},
+            "discovery_enabled": True,
+            "discovery_meta": {"alive_hosts": []},
+        },
         {"max_hosts": 1, "max_ports": 1},
         dry_run=True,
     )
-    assert plan["mode"] == "mock"
-    assert plan["probes"]
-    assert plan["probes"][0]["host"].startswith("10.10.10.")
+    assert plan["mode"] == "skip"
+    assert plan["reason"] == "no_alive_hosts"
 
 
 def test_dns_tunnel_uses_alive_hosts_when_no_dns_server() -> None:

@@ -1,0 +1,187 @@
+# Profile-level expected traffic behavior for DSP Traffic Regression E2E.
+# Profiles: normal (default), high (coverage expansion only).
+# Legacy alias: low → normal.
+
+profiles:
+  normal:
+    target_scope: max_2_targets
+    per_target_count: normal
+    scenarios:
+      port_sweep:
+        expected_hosts: 2
+        expected_ports: 10
+        expected_total: 20
+        selected_from: alive_hosts
+        target_scope: max_2_targets
+        pcap_required: true
+        evidence_required: true
+
+      http_followup:
+        expected_requests: 300
+        burst_min: 50
+        burst_max: 200
+        selected_from: http_targets
+        target_scope: max_2_targets
+        per_target_count: normal
+        pcap_required: true
+        evidence_required: true
+
+      sql_injection:
+        expected_requests: 318
+        payload_count: 53
+        repeat_per_target: 3
+        selected_from: http_targets
+        target_scope: max_2_targets
+        per_target_count: normal
+        pcap_required: true
+        evidence_required: true
+
+      ssh_failure:
+        expected_attempts: 150
+        selected_from: ssh_hosts
+        target_scope: max_2_targets
+        per_target_count: normal
+        pcap_required: true
+        evidence_required: true
+        skip_allowed_if_no_ssh_hosts: true
+
+      dns_tunnel:
+        payload_mb: 1
+        expected_hosts: 1
+        selected_from: alive_hosts
+        target_scope: one_live_host
+        per_target_payload_same_as_normal: true
+        pcap_required: true
+        evidence_required: true
+        response_required: false
+
+      dga:
+        expected_domains: 45
+        selected_from: dns_hosts
+        target_scope: one_dns_resolver
+        per_target_count: normal
+        skip_allowed_if_no_dns_hosts: true
+        pcap_required: true
+        evidence_required: true
+
+      ldap_enumeration:
+        max_queries: 16
+        selected_from: ldap_hosts
+        target_scope: max_2_targets
+        per_target_count: normal
+        skip_allowed_if_no_ldap_hosts: true
+        pcap_required: true
+        evidence_required: true
+
+      smb_login_failure:
+        max_connects: 20
+        selected_from: smb_hosts
+        target_scope: max_2_targets
+        per_target_count: normal
+        skip_allowed_if_no_smb_hosts: true
+        pcap_required: true
+        evidence_required: true
+
+      kerberos_failure:
+        max_attempts: 20
+        selected_from: kerberos_hosts
+        target_scope: max_2_targets
+        per_target_count: normal
+        skip_allowed_if_no_kerberos_hosts: true
+        pcap_required: true
+        evidence_required: true
+
+      rare_protocol_activity:
+        rtp_burst: 8
+        selected_from: rare_ports_or_alive_hosts
+        target_scope: max_2_targets
+        per_target_count: normal
+        pcap_required: true
+        evidence_required: true
+
+      host_behavior_check:
+        min_commands: 8
+        pcap_required: false
+        evidence_required: true
+
+  high:
+    inherits: normal
+    host_cap: all_discovered
+    higher_volume: false
+    target_scope: all_discovered_targets
+    per_target_count: same_as_normal
+    scenarios:
+      dns_tunnel:
+        payload_mb: 1
+        selected_from: alive_hosts
+        target_scope: all_live_hosts
+        per_target_payload_same_as_normal: true
+        pcap_required: true
+        evidence_required: true
+        response_required: false
+      dga:
+        expected_domains: 45
+        selected_from: dns_hosts
+        target_scope: one_dns_resolver
+        per_target_count: same_as_normal
+        skip_allowed_if_no_dns_hosts: true
+        pcap_required: true
+        evidence_required: true
+      ssh_failure:
+        expected_attempts_per_host: 150
+        selected_from: ssh_hosts
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        pcap_required: true
+        evidence_required: true
+        skip_allowed_if_no_ssh_hosts: true
+      sql_injection:
+        payload_count: 53
+        repeat_per_target: 3
+        selected_from: http_targets
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        pcap_required: true
+        evidence_required: true
+      http_followup:
+        selected_from: http_targets
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        burst_min: 50
+        burst_max: 200
+        pcap_required: true
+        evidence_required: true
+      rare_protocol_activity:
+        rtp_burst: 8
+        selected_from: rare_ports_or_alive_hosts
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        pcap_required: true
+        evidence_required: true
+      port_sweep:
+        selected_from: alive_hosts
+        target_scope: all_live_hosts
+        expected_ports: 10
+        pcap_required: true
+        evidence_required: true
+      ldap_enumeration:
+        selected_from: ldap_hosts
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        skip_allowed_if_no_ldap_hosts: true
+        pcap_required: true
+        evidence_required: true
+      smb_login_failure:
+        selected_from: smb_hosts
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        skip_allowed_if_no_smb_hosts: true
+        pcap_required: true
+        evidence_required: true
+      kerberos_failure:
+        selected_from: kerberos_hosts
+        target_scope: all_discovered_targets
+        per_target_count: same_as_normal
+        skip_allowed_if_no_kerberos_hosts: true
+        pcap_required: true
+        evidence_required: true

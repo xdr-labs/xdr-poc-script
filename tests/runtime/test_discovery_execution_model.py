@@ -61,7 +61,7 @@ def _apply_webshell_http_plan(
 
 def test_local_and_webshell_share_scenario_order_for_all_profiles() -> None:
     """Test A/F — identical scenario ordering between providers (profile-driven)."""
-    for profile in ("low", "normal", "high"):
+    for profile in ("normal", "high"):
         local_order = scenarios_for_profile(profile)
         webshell_order = scenarios_for_profile(profile)
         assert local_order == webshell_order
@@ -69,26 +69,21 @@ def test_local_and_webshell_share_scenario_order_for_all_profiles() -> None:
             assert local_order == list(DISCOVERY_FIRST_SCENARIO_ORDER)
 
 
-@pytest.mark.parametrize("profile", ["low", "normal", "high"])
+@pytest.mark.parametrize("profile", ["normal", "high"])
 def test_profiles_preserve_discovery_first_ordering(profile: str) -> None:
-    """Test E — low/normal/high preserve target-net execution ordering."""
+    """Test E — normal/high preserve target-net execution ordering."""
     scenarios = scenarios_for_profile(profile)
-    if profile == "low":
-        assert scenarios == ["port_sweep", "http_followup", "dns_tunnel"]
-        assert scenarios.index("port_sweep") < scenarios.index("http_followup")
-        assert scenarios[-1] == "dns_tunnel"
-    else:
-        assert scenarios == list(DISCOVERY_FIRST_SCENARIO_ORDER)
-        assert scenarios.index("port_sweep") < scenarios.index("http_followup")
-        assert scenarios.index("sql_injection") < scenarios.index("dga")
-        assert scenarios[-1] == "dns_tunnel"
+    assert scenarios == list(DISCOVERY_FIRST_SCENARIO_ORDER)
+    assert scenarios.index("port_sweep") < scenarios.index("http_followup")
+    assert scenarios.index("sql_injection") < scenarios.index("dga")
+    assert scenarios[-1] == "dns_tunnel"
 
 
 def test_webshell_http_followup_targets_discovered_hosts_when_available() -> None:
     """Follow-up HTTP targets come from remote discovery on the webshell host."""
     webshell_url = "http://10.10.10.50:8080/shell.jsp"
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["http_followup"],
         target_net="10.10.10.0/24",
     )
@@ -152,7 +147,7 @@ def test_webshell_sql_injection_targets_discovered_http_hosts() -> None:
 def test_discovery_drives_http_followup_without_webshell_override() -> None:
     """Test D — service discovery drives HTTP follow-up when no webshell override."""
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["http_followup"],
         target_net="10.10.10.0/24",
     )
@@ -183,7 +178,7 @@ def test_discovery_drives_http_followup_without_webshell_override() -> None:
 def test_local_and_webshell_port_sweep_plan_parity() -> None:
     """Test F — port_sweep plan identical; only HTTP pre-compromise differs in webshell mode."""
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["port_sweep"],
         target_net="10.10.10.0/24",
     )

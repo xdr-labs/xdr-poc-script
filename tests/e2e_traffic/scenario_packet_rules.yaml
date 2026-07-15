@@ -1,0 +1,118 @@
+# Scenario → pcap / evidence mapping for DSP Traffic Regression E2E.
+# This file does not change DSP behavior; it only defines comparison rules.
+
+scenarios:
+  http_followup:
+    pcap_required: true
+    match:
+      - http.request
+      - tcp.dstport in [80, 8080, 8000, 8081]
+    evidence_files:
+      - http_followup_requests.jsonl
+      - http_request_dump.json
+    discovery_source: http_targets
+
+  sql_injection:
+    pcap_required: true
+    match:
+      - http.request
+      - tcp.dstport in [80, 8080, 8000, 8081]
+    evidence_files:
+      - http_request_dump.json
+      - events.jsonl
+    discovery_source: http_targets
+
+  ssh_failure:
+    pcap_required: true
+    match:
+      - tcp.dstport == 22
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: ssh_hosts
+
+  dns_tunnel:
+    pcap_required: true
+    response_required: false
+    match:
+      - udp.dstport == 53
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: alive_hosts
+
+  dga:
+    pcap_required: true
+    match:
+      - udp.dstport == 53
+      - dns query
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: dns_hosts
+
+  port_sweep:
+    pcap_required: true
+    match:
+      - tcp connection attempt
+      - multiple destination ports or multiple hosts
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: alive_hosts
+
+  rare_protocol_activity:
+    pcap_required: true
+    match:
+      - TELNET
+      - RTSP
+      - SIP
+      - RTP
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: rare_ports_or_alive_hosts
+
+  ldap_enumeration:
+    pcap_required: true
+    match:
+      - tcp.dstport in [389, 636]
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: ldap_hosts
+
+  smb_login_failure:
+    pcap_required: true
+    match:
+      - tcp.dstport == 445
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: smb_hosts
+
+  kerberos_failure:
+    pcap_required: true
+    match:
+      - tcp.dstport == 88
+      - udp.dstport == 88
+    evidence_files:
+      - events.jsonl
+      - traffic_summary.json
+    discovery_source: kerberos_hosts
+
+  host_behavior_check:
+    pcap_required: false
+    evidence_only: true
+    evidence_files:
+      - events.jsonl
+      - validation.json
+    discovery_source: webshell_host
+
+  eicar_test_file:
+    pcap_required: false
+    evidence_only: true
+    evidence_files:
+      - events.jsonl
+      - validation.json
+    discovery_source: none

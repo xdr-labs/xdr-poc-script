@@ -101,7 +101,7 @@ def _http_plan_hosts(url_map: dict[str, list[str]]) -> dict[str, list[str]]:
 
 def main() -> int:
     reports = []
-    for profile in ("low", "normal", "high"):
+    for profile in ("normal", "high"):
         for provider in ("local", "webshell"):
             reports.append(_report_profile(profile, provider))
     print(json.dumps(reports, indent=2))

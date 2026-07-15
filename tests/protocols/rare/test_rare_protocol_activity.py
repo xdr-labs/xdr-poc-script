@@ -22,16 +22,68 @@ from dsp.plugins import PluginLoader
 from dsp.validation.engine import ValidationEngine
 
 
-def test_plan_includes_all_protocols_on_probe_fallback() -> None:
-    targets = TargetSet.stub("10.10.10.0/24")
+def test_plan_skips_when_no_valid_target() -> None:
+    targets = TargetSet(
+        target_net="10.10.10.0/24",
+        hosts=[],
+        discovery_enabled=True,
+        discovery_meta={"alive_hosts": []},
+    )
+    plans = plan_rare_protocol_activity(targets, {})
+    assert plans == []
+
+
+def test_plan_does_not_fallback_to_localhost() -> None:
+    targets = TargetSet(
+        target_net="10.10.10.0/24",
+        hosts=[],
+        discovery_enabled=True,
+        discovery_meta={"alive_hosts": []},
+    )
+    plans = plan_rare_protocol_activity(targets, {})
+    assert plans == []
+    assert all(plan.host not in {"127.0.0.1", "::1", "localhost"} for plan in plans)
+
+
+def test_plan_includes_all_protocols_on_alive_host_fallback() -> None:
+    targets = TargetSet(
+        target_net="10.10.10.0/24",
+        hosts=["10.10.10.20"],
+        discovery_enabled=True,
+        discovery_meta={"alive_hosts": ["10.10.10.20"]},
+    )
     plans = plan_rare_protocol_activity(targets, {})
     protocols = {plan.protocol for plan in plans}
     assert protocols == set(RARE_PROTOCOL_PORTS.keys())
     assert len(plans) == 4
+    assert all(plan.host == "10.10.10.20" for plan in plans)
+
+
+def test_plan_skips_local_interface_ip_prefers_other_alive_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Local provider must not probe self-IP (no br0 packets); prefer other alive host."""
+    monkeypatch.setattr(
+        "dsp.protocols.rare.attempts._local_interface_ips",
+        lambda: {"127.0.0.1", "::1", "localhost", "10.10.10.1"},
+    )
+    targets = TargetSet(
+        target_net="10.10.10.0/24",
+        hosts=["10.10.10.1", "10.10.10.10"],
+        discovery_enabled=True,
+        discovery_meta={"alive_hosts": ["10.10.10.1", "10.10.10.10"]},
+    )
+    plans = plan_rare_protocol_activity(targets, {})
+    assert len(plans) == 4
+    assert all(plan.host == "10.10.10.10" for plan in plans)
+    assert "10.10.10.1" not in {plan.host for plan in plans}
 
 
 def test_plan_uses_probe_hosts_for_fallback() -> None:
-    targets = TargetSet.stub("10.10.10.0/24")
+    targets = TargetSet(
+        target_net="10.10.10.0/24",
+        hosts=[],
+        discovery_enabled=True,
+        discovery_meta={"alive_hosts": []},
+    )
     plans = plan_rare_protocol_activity(targets, {"probe_hosts": ["10.10.10.20"]})
     protocols = {plan.protocol for plan in plans}
     assert protocols == set(RARE_PROTOCOL_PORTS.keys())

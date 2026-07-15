@@ -179,31 +179,31 @@ def _targets_with_alive(*alive: str) -> TargetSet:
     )
 
 
-def test_low_profile_port_sweep_does_not_scan_full_slash24() -> None:
+def test_normal_profile_port_sweep_does_not_scan_full_slash24() -> None:
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["port_sweep"],
         target_net="10.10.10.0/24",
     )
-    assert params["port_sweep"]["max_hosts"] == 1
+    assert params["port_sweep"]["max_hosts"] == 2
 
     targets = _targets_with_alive("10.10.10.97", "10.10.10.98", "10.10.10.99")
     plan = build_port_sweep_plan_view(targets, params["port_sweep"])
-    assert plan.planned_probes == 10
-    assert plan.selected_hosts == ["10.10.10.97"]
+    assert plan.planned_probes == 20
+    assert plan.selected_hosts == ["10.10.10.97", "10.10.10.98"]
     assert plan.selection_reason == "alive_hosts"
     assert plan.full_sweep_requested is False
 
 
-def test_low_profile_planned_probes_bounded_for_webshell_execution() -> None:
+def test_normal_profile_planned_probes_bounded_for_webshell_execution() -> None:
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["port_sweep"],
         target_net="10.10.10.0/24",
     )
     targets = resolve_targets("10.10.10.0/24", max_hosts=254, discovery=False, dry_run=True)
     plan = build_port_sweep_plan_view(targets, params["port_sweep"])
-    assert plan.planned_probes <= 10
+    assert plan.planned_probes <= 20
 
 
 def test_high_profile_allows_intentional_full_sweep() -> None:
@@ -221,7 +221,7 @@ def test_high_profile_allows_intentional_full_sweep() -> None:
 
 def test_explicit_full_sweep_params_bypass_profile_host_cap() -> None:
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["port_sweep"],
         target_net="10.10.10.0/24",
     )
@@ -235,7 +235,7 @@ def test_explicit_full_sweep_params_bypass_profile_host_cap() -> None:
 
 def test_local_and_webshell_port_sweep_plan_parity() -> None:
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["port_sweep"],
         target_net="10.10.10.0/24",
     )
@@ -258,7 +258,7 @@ def test_local_and_webshell_http_followup_endpoint_parity() -> None:
     from dsp.protocols.http.target_probe import HTTPEndpointProbeResult
 
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["http_followup"],
         target_net="10.10.10.0/24",
     )
@@ -330,7 +330,7 @@ def test_local_and_webshell_sql_injection_endpoint_parity() -> None:
 
 def test_bash_parity_low_profile_metadata_documents_bounded_selection() -> None:
     params = build_operational_scenario_params(
-        "low",
+        "normal",
         ["port_sweep"],
         target_net="10.10.10.0/24",
     )
@@ -339,9 +339,9 @@ def test_bash_parity_low_profile_metadata_documents_bounded_selection() -> None:
         "port_sweep",
         targets,
         params["port_sweep"],
-        profile="low",
+        profile="normal",
     )
-    assert meta["profile"] == "low"
+    assert meta["profile"] == "normal"
     assert meta["targets"] == 1
     assert meta["planned_probes"] == 10
     assert meta["selection_reason"] == "alive_hosts"
@@ -364,7 +364,7 @@ def test_remote_timeout_regression_low_profile_probe_count(tmp_path) -> None:
             scenario_ids=["port_sweep"],
             target_net="10.10.10.0/24",
             dry_run=False,
-            operational_profile="low",
+            operational_profile="normal",
             execution_provider="webshell",
             webshell_family="jsp",
             webshell_url=server.webshell_url,
@@ -375,11 +375,11 @@ def test_remote_timeout_regression_low_profile_probe_count(tmp_path) -> None:
             "port_sweep",
             _targets_with_alive("10.10.10.97"),
             build_operational_scenario_params(
-                "low",
+                "normal",
                 ["port_sweep"],
                 target_net="10.10.10.0/24",
             )["port_sweep"],
-            profile="low",
+            profile="normal",
         )
         assert meta["planned_probes"] <= 10
         assert (run_dir / "events.jsonl").is_file()

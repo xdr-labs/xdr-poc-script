@@ -50,11 +50,11 @@ def test_resolve_run_plan_explicit_scenarios_with_profile_applies_params() -> No
     scenario_ids, params, profile = _resolve_run_plan(
         manager,
         scenarios_arg="dns_tunnel",
-        profile_arg="low",
+        profile_arg="normal",
         target_net="10.10.10.0/24",
     )
     assert scenario_ids == ["dns_tunnel"]
-    assert profile == "low"
+    assert profile == "normal"
     assert params["dns_tunnel"]["max_hosts"] == 1
 
 

@@ -7,7 +7,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 from dsp.engine.scenario_engine import TargetSet
-from dsp.engine.target_engine import expand_target_net_hosts
 from dsp.protocols.http.urls import HTTP_DETECTION_PORTS
 from dsp.protocols.recon import DEFAULT_PORTS, MAX_PORTS_DEFAULT, plan_port_sweep
 
@@ -106,15 +105,23 @@ def select_port_sweep_hosts(
     *,
     max_hosts: int,
 ) -> tuple[list[str], str]:
-    """Select port sweep hosts using bash-compatible, provider-independent rules."""
+    """Select port sweep hosts using discovery-first, provider-independent rules.
+
+    Never expands ``target_net`` CIDR as a silent fallback. Empty discovery /
+    host buckets skip the scenario (``no_alive_hosts``).
+    """
     if config.get("hosts"):
         hosts = [str(h) for h in config["hosts"]][:max_hosts]
         return hosts, "explicit_hosts"
+    if targets.discovery_enabled:
+        meta = targets.discovery_meta or {}
+        alive = [str(h) for h in (meta.get("alive_hosts") or targets.hosts or [])]
+        if alive:
+            return alive[:max_hosts], "alive_hosts"
+        return [], "no_alive_hosts"
     if targets.hosts:
-        reason = "alive_hosts" if targets.discovery_enabled else "discovered_hosts"
-        return [str(h) for h in targets.hosts][:max_hosts], reason
-    hosts = expand_target_net_hosts(targets.target_net, max_hosts=max_hosts)[:max_hosts]
-    return hosts, "target_net_expansion"
+        return [str(h) for h in targets.hosts][:max_hosts], "discovered_hosts"
+    return [], "no_alive_hosts"
 
 
 def resolve_port_sweep_ports(config: dict[str, Any], max_ports: int) -> tuple[int, ...]:
@@ -133,6 +140,16 @@ def build_port_sweep_plan_view(
     max_ports = int(params.get("max_ports", MAX_PORTS_DEFAULT))
     hosts, reason = select_port_sweep_hosts(targets, params, max_hosts=max_hosts)
     ports = resolve_port_sweep_ports(params, max_ports)
+    if not hosts or reason == "no_alive_hosts":
+        return PortSweepPlanView(
+            selected_hosts=[],
+            selected_ports=ports,
+            planned_probes=0,
+            selection_reason="no_alive_hosts",
+            full_sweep_requested=bool(params.get("full_sweep")),
+            max_hosts=max_hosts,
+            max_ports=max_ports,
+        )
     probes = plan_port_sweep(
         hosts,
         max_hosts=max_hosts,

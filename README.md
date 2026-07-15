@@ -21,7 +21,7 @@ Then in the menu:
 | Step | Menu | Action |
 |------|------|--------|
 | 1 | *(install finishes)* | Menu opens automatically |
-| 2 | **2 — Configure environment** | Set target network (CIDR), profile (`low` / `normal` / `high`), local vs webshell |
+| 2 | **2 — Configure environment** | Set target network (CIDR), profile (`normal` / `high`), local vs webshell |
 | 3 | **3 — Run scenario** | Execute using saved settings |
 
 **Output:** `~/.dsp/runs/<run_id>/` (`report.md`, `events.db`, `validation.json`, …)  
@@ -39,7 +39,7 @@ Custom path: `DSP_REPO_DIR=/opt/xdr-poc-script bash install-dsp.sh`
 | **Runs scenarios** | Dispatches protocol traffic from this host (**local**) or via a **webshell** on a remote host |
 | **Records events** | Append-only event store (`events.db` / `events.jsonl`) — single source of truth |
 | **Produces reports** | `report.md`, `validation.json`, `traffic_summary.json` per run |
-| **Profiles** | `low`, `normal`, or `high` traffic volume — no need to memorize CLI flags |
+| **Profiles** | `normal` (default) or `high` — coverage expansion, not intensity |
 
 DSP validates **traffic and event generation**, not vendor alert firing.
 

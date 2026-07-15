@@ -5,153 +5,162 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-SUPPORTED_TRAFFIC_PROFILES = frozenset({"low", "normal", "high"})
+SUPPORTED_TRAFFIC_PROFILES = frozenset({"normal", "high"})
 
 _PROFILE_ALIASES: dict[str, str] = {
     "balanced": "normal",
     "burst": "high",
+    # Legacy: low removed — map to default normal.
+    "low": "normal",
 }
 
 # Profile-level DNS tunnel payload sizes (MB).
+# high matches normal per-target payload; coverage expands via max_hosts only.
 _PROFILE_DNS_TUNNEL_PAYLOAD_MB: dict[str, float] = {
-    "low": 1.0,
-    "normal": 2.0,
-    "high": 4.0,
+    "normal": 1.0,
+    "high": 1.0,
 }
 
 # DGA total domain counts (phase1 + phase2) per operational profile.
+# high matches normal domain count; resolver selection remains one dns_host.
 _DGA_DOMAIN_COUNTS: dict[str, dict[str, int]] = {
-    "low": {"phase1_count": 12, "phase2_count": 3},
     "normal": {"phase1_count": 35, "phase2_count": 10},
-    "high": {"phase1_count": 70, "phase2_count": 20},
+    "high": {"phase1_count": 35, "phase2_count": 10},
+}
+
+# Shared normal-volume templates reused by high (coverage expands via host_cap).
+_HTTP_FOLLOWUP_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "max_per_host": 150,
+    "max_total": 300,
+    "timeout": 2.0,
+    "concurrency": 32,
+    "include_attack_paths": True,
+    "non_standard_burst_min": 50,
+    "non_standard_burst_max": 200,
+}
+_SSH_FAILURE_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "max_per_host": 150,
+    "max_total": 150,
+    "timeout": 5.0,
+}
+_SQL_INJECTION_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "max_per_host": 159,
+    "max_total": 318,
+    "timeout": 10.0,
+}
+_RARE_PROTOCOL_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "timeout": 3.0,
+    "rtp_burst_count": 8,
+}
+_KERBEROS_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "attempts_per_host": 10,
+    "timeout": 1.0,
+}
+_SMB_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "attempts_per_host": 10,
+    "timeout": 10.0,
+}
+_LDAP_NORMAL: dict[str, Any] = {
+    "max_hosts": 2,
+    "max_queries_per_host": 8,
+    "timeout": 10.0,
 }
 
 # Per-scenario parameter templates keyed by operational profile name.
 # Explicit scenario_params passed at run time always override these values.
+# high = same per-target volume as normal; operational_profiles expands max_hosts.
 _SCENARIO_PROFILE_PARAMS: dict[str, dict[str, dict[str, Any]]] = {
     "dummy": {
-        "low": {"action_count": 3},
         "normal": {"action_count": 10},
-        "high": {"action_count": 25},
+        "high": {"action_count": 10},
     },
     "dns_tunnel": {
-        "low": {
-            "volume_profile": "demo",
-            "payload_mb": _PROFILE_DNS_TUNNEL_PAYLOAD_MB["low"],
-            "max_hosts": 1,
-            "timeout": 0.1,
-        },
         "normal": {
             "volume_profile": "standard",
             "payload_mb": _PROFILE_DNS_TUNNEL_PAYLOAD_MB["normal"],
-            "max_hosts": 2,
+            "max_hosts": 1,
+            "lock_max_hosts": True,
             "timeout": 0.05,
         },
         "high": {
-            "volume_profile": "stress",
+            # Same per-target payload as normal; no lock — operational expands to all live hosts.
+            "volume_profile": "standard",
             "payload_mb": _PROFILE_DNS_TUNNEL_PAYLOAD_MB["high"],
-            "chunk_size": 30,
+            "max_hosts": 1,
             "max_duration_sec": 120,
             "timeout": 0.05,
         },
     },
     "dga": {
-        "low": {**_DGA_DOMAIN_COUNTS["low"], "timeout": 0.1},
         "normal": {**_DGA_DOMAIN_COUNTS["normal"], "timeout": 0.05},
         "high": {**_DGA_DOMAIN_COUNTS["high"], "timeout": 0.05},
     },
     "http_followup": {
-        "low": {
-            "max_hosts": 1,
-            "max_per_host": 40,
-            "max_total": 40,
-            "timeout": 2.0,
-            "concurrency": 32,
-            "include_attack_paths": True,
-        },
-        "normal": {
-            "max_hosts": 2,
-            "max_per_host": 150,
-            "max_total": 300,
-            "timeout": 2.0,
-            "concurrency": 32,
-            "include_attack_paths": True,
-            "non_standard_burst_min": 50,
-            "non_standard_burst_max": 200,
-        },
-        "high": {
-            "max_hosts": 1,
-            "max_per_host": 300,
-            "max_total": 300,
-            "timeout": 2.0,
-            "concurrency": 32,
-            "include_attack_paths": True,
-        },
+        "normal": dict(_HTTP_FOLLOWUP_NORMAL),
+        "high": dict(_HTTP_FOLLOWUP_NORMAL),
     },
     "ssh_failure": {
-        "low": {"max_hosts": 1, "max_per_host": 30, "max_total": 30, "timeout": 5.0},
-        "normal": {"max_hosts": 2, "max_per_host": 150, "max_total": 150, "timeout": 5.0},
-        "high": {"max_hosts": 2, "max_per_host": 300, "max_total": 300, "timeout": 5.0},
+        "normal": dict(_SSH_FAILURE_NORMAL),
+        "high": dict(_SSH_FAILURE_NORMAL),
     },
     "sql_injection": {
-        "low": {"max_hosts": 1, "max_per_host": 159, "max_total": 159, "timeout": 15.0},
-        "normal": {"max_hosts": 2, "max_per_host": 159, "max_total": 318, "timeout": 10.0},
-        "high": {"max_hosts": 3, "max_per_host": 159, "max_total": 477, "timeout": 5.0},
+        "normal": dict(_SQL_INJECTION_NORMAL),
+        "high": dict(_SQL_INJECTION_NORMAL),
     },
     "port_sweep": {
-        "low": {"max_hosts": 1, "max_ports": 10, "timeout": 0.5, "concurrency": 32},
         "normal": {"max_hosts": 254, "max_ports": 10, "timeout": 0.5, "concurrency": 32},
         "high": {"max_hosts": 254, "max_ports": 10, "timeout": 0.5, "concurrency": 32},
     },
     "rare_protocol_activity": {
-        "low": {"timeout": 2.0, "rtp_burst_count": 4},
-        "normal": {"timeout": 3.0, "rtp_burst_count": 8},
-        "high": {"timeout": 3.0, "rtp_burst_count": 16},
+        "normal": dict(_RARE_PROTOCOL_NORMAL),
+        "high": dict(_RARE_PROTOCOL_NORMAL),
     },
     "host_behavior_check": {
-        "low": {"timeout": 30.0},
         "normal": {"timeout": 30.0},
         "high": {"timeout": 30.0},
     },
     "kerberos_failure": {
-        "low": {"max_hosts": 1, "attempts_per_host": 3, "timeout": 15.0},
-        "normal": {"max_hosts": 2, "attempts_per_host": 10, "timeout": 1.0},
-        "high": {"max_hosts": 2, "attempts_per_host": 25, "timeout": 1.0},
+        "normal": dict(_KERBEROS_NORMAL),
+        "high": dict(_KERBEROS_NORMAL),
     },
     "smb_login_failure": {
-        "low": {"max_hosts": 1, "attempts_per_host": 3, "timeout": 15.0},
-        "normal": {"max_hosts": 2, "attempts_per_host": 10, "timeout": 10.0},
-        "high": {"max_hosts": 2, "attempts_per_host": 25, "timeout": 5.0},
+        "normal": dict(_SMB_NORMAL),
+        "high": dict(_SMB_NORMAL),
     },
     "ldap_enumeration": {
-        "low": {"max_hosts": 1, "max_queries_per_host": 3, "timeout": 15.0},
-        "normal": {"max_hosts": 2, "max_queries_per_host": 8, "timeout": 10.0},
-        "high": {"max_hosts": 2, "max_queries_per_host": 20, "timeout": 5.0},
+        "normal": dict(_LDAP_NORMAL),
+        "high": dict(_LDAP_NORMAL),
     },
     "dns_dummy": {
-        "low": {"query_count": 3},
         "normal": {"query_count": 8},
-        "high": {"query_count": 20},
+        "high": {"query_count": 8},
     },
     "dns_transport_dummy": {
-        "low": {"query_count": 3},
         "normal": {"query_count": 8},
-        "high": {"query_count": 20},
+        "high": {"query_count": 8},
     },
 }
 
 _PROFILE_META: dict[str, dict[str, Any]] = {
-    "low": {
-        "description": "Conservative traffic volume for first connectivity checks.",
+    "normal": {
+        "description": (
+            "Default profile — standard per-target traffic volume against limited "
+            "representative targets (DNS Tunnel: 1 live host; others: up to 2)."
+        ),
         "intensity": 1,
     },
-    "normal": {
-        "description": "Moderate traffic volume — default operational test profile.",
-        "intensity": 2,
-    },
     "high": {
-        "description": "High traffic volume — maximum coverage with bounded duration.",
-        "intensity": 3,
+        "description": (
+            "Same per-target traffic volume as normal, applied to all discovered "
+            "hosts/services (coverage expansion only)."
+        ),
+        "intensity": 2,
     },
 }
 
@@ -224,3 +233,24 @@ def profile_for_scenario(scenario_id: str, profile_name: str) -> TrafficProfile:
         intensity=base.intensity,
         scenario_params=params,
     )
+
+
+def per_target_volume_keys() -> tuple[str, ...]:
+    """Parameter keys that must not increase on high vs normal (per-target volume)."""
+    return (
+        "max_per_host",
+        "attempts_per_host",
+        "max_queries_per_host",
+        "rtp_burst_count",
+        "payload_mb",
+        "phase1_count",
+        "phase2_count",
+        "chunk_size",
+        "action_count",
+        "query_count",
+        "non_standard_burst_min",
+        "non_standard_burst_max",
+    )
+
+
+DEFAULT_TRAFFIC_PROFILE = "normal"

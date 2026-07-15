@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 *.egg-info/
+dist/
 
 # Local lab run artifacts (not versioned; see docs/validation/ for reports)
 lab/

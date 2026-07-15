@@ -326,7 +326,7 @@ def test_cli_activity_console_integration(tmp_path: Path, capsys) -> None:
             [
                 "run",
                 "--profile",
-                "low",
+                "normal",
                 "--target-net",
                 "221.139.249.0/24",
                 "--dry-run",

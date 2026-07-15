@@ -13,6 +13,7 @@ PORT_PROBE_SENT = "port_probe_sent"
 PORT_CONNECTION_OPENED = "port_connection_opened"
 PORT_CONNECTION_FAILED = "port_connection_failed"
 PORT_SWEEP_COMPLETED = "port_sweep_completed"
+PORT_SWEEP_SKIPPED = "port_sweep_skipped"
 
 PORT_SWEEP_TRAFFIC_EVENTS = frozenset(
     {
@@ -41,6 +42,26 @@ def build_port_sweep_started_event(
         event=PORT_SWEEP_STARTED,
         status="info",
         target=target,
+        artifact="port_sweep_session",
+        evidence=dict(evidence),
+        source=source,
+    )
+
+
+def build_port_sweep_skipped_event(
+    *,
+    run_id: str,
+    scenario_id: str,
+    source: str,
+    evidence: dict[str, Any],
+) -> Event:
+    return Event(
+        run_id=run_id,
+        scenario_id=scenario_id,
+        timestamp=datetime.now(timezone.utc),
+        stage="executor",
+        event=PORT_SWEEP_SKIPPED,
+        status="info",
         artifact="port_sweep_session",
         evidence=dict(evidence),
         source=source,

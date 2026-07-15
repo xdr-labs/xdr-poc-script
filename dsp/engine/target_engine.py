@@ -44,10 +44,9 @@ def resolve_targets(
 
     net = (target_net or "").strip()
     if not net:
-        return TargetSet(
-            target_net=DEFAULT_LAB_TARGET_NET,
-            hosts=[DEFAULT_LAB_FALLBACK_HOST],
-            capabilities=caps,
+        raise ValueError(
+            "target_net is required; refusing silent lab fallback "
+            f"(removed default {DEFAULT_LAB_FALLBACK_HOST})"
         )
 
     expand_limit = DISCOVERY_MAX_HOSTS if discovery else (max_hosts if max_hosts is not None else MAX_EXPANDED_HOSTS)
@@ -78,8 +77,8 @@ def resolve_targets(
             "service_hosts": service_hosts,
             "service_endpoints": service_endpoints,
         }
-        if result.alive_hosts:
-            hosts = result.alive_hosts
+        # Discovery-first: never keep CIDR expansion when discovery ran.
+        hosts = list(result.alive_hosts)
 
     return TargetSet(
         target_net=net,

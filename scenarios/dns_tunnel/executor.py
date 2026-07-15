@@ -54,7 +54,7 @@ def run(
     mode = "mock" if ctx.dry_run else "live"
     client = DnsClient(mode=mode, timeout=timeout)
 
-    host_targets = select_tunnel_targets(targets, params, max_hosts=int(params.get("max_hosts", 2)))
+    host_targets = select_tunnel_targets(targets, params, max_hosts=int(params.get("max_hosts", 1)))
     session_id = str(plan.get("session_id") or uuid.uuid4().hex[:6])
     queries = list(plan.get("queries") or [])
     idx_queries = [q for q in queries if q.get("query_role", "idx_chunk") == "idx_chunk"]

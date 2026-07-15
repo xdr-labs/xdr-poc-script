@@ -36,7 +36,7 @@ def _run_dsp_cli(
         "dsp.runner.cli",
         "run",
         "--profile",
-        "low",
+        "normal",
         "--execution-provider",
         "webshell",
         "--webshell-family",
@@ -161,7 +161,7 @@ def test_real_webshell_command_only_run_manager_success(
     server, remote_work_dir, runs_dir = webshell_fixture
     manager = RunManager(runs_dir=runs_dir)
     run, run_dir, exit_code = manager.run(
-        operational_profile="low",
+        operational_profile="normal",
         scenario_ids=["port_sweep", "dns_tunnel", "http_followup"],
         target_net="127.0.0.0/30",
         dry_run=False,

@@ -4,20 +4,24 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from dsp.engine.target_engine import expand_target_net_hosts, resolve_targets
+from dsp.engine.target_engine import expand_target_net_hosts
 from dsp.runtime.traffic_profiles import (
     build_scenario_params,
     parse_traffic_profile,
     scenario_params_for_profile,
 )
 
-SUPPORTED_OPERATIONAL_PROFILES = frozenset({"low", "normal", "high"})
+SUPPORTED_OPERATIONAL_PROFILES = frozenset({"normal", "high"})
+
+DEFAULT_OPERATIONAL_PROFILE = "normal"
 
 HOST_BEHAVIOR_CHECK_SCENARIO_ID = "host_behavior_check"
 
 _PROFILE_ALIASES: dict[str, str] = {
     "balanced": "normal",
     "burst": "high",
+    # Legacy: low removed — map to default normal.
+    "low": "normal",
 }
 
 # Target-net execution order (after upfront discovery TCP prefetch):
@@ -37,13 +41,11 @@ DISCOVERY_FIRST_SCENARIO_ORDER: tuple[str, ...] = (
 )
 
 _PROFILE_SCENARIOS: dict[str, tuple[str, ...]] = {
-    "low": ("port_sweep", "http_followup", "dns_tunnel"),
     "normal": DISCOVERY_FIRST_SCENARIO_ORDER,
     "high": DISCOVERY_FIRST_SCENARIO_ORDER,
 }
 
 _PROFILE_MAX_HOSTS: dict[str, int | None] = {
-    "low": 1,
     "normal": 2,
     "high": None,  # use all discovered hosts
 }
@@ -117,8 +119,9 @@ def discover_host_count(target_net: str, *, max_hosts: int | None = None) -> int
     """Return usable host count from target_net CIDR (Target Discovery)."""
     net = (target_net or "").strip()
     if not net:
-        targets = resolve_targets("")
-        return len(targets.hosts)
+        raise ValueError(
+            "target_net is required; refusing silent lab fallback"
+        )
     cap = max_hosts if max_hosts is not None else 254
     return len(expand_target_net_hosts(net, max_hosts=cap))
 
@@ -147,6 +150,23 @@ def _host_limit_for_profile(
     return max(1, limit)
 
 
+def _scale_max_total_for_host_expansion(
+    params: dict[str, Any],
+    *,
+    previous_max_hosts: int,
+) -> dict[str, Any]:
+    """When host coverage expands, keep per-host intensity and grow max_total."""
+    merged = dict(params)
+    if "max_per_host" not in merged or "max_total" not in merged:
+        return merged
+    new_hosts = int(merged.get("max_hosts", previous_max_hosts))
+    if new_hosts <= previous_max_hosts:
+        return merged
+    per_host = int(merged["max_per_host"])
+    merged["max_total"] = max(int(merged["max_total"]), per_host * new_hosts)
+    return merged
+
+
 def _apply_host_limit(
     params: dict[str, Any],
     profile: str,
@@ -155,9 +175,13 @@ def _apply_host_limit(
     max_hosts_override: int | None = None,
 ) -> dict[str, Any]:
     merged = dict(params)
-    if merged.get("full_sweep"):
+    previous_max_hosts = int(merged.get("max_hosts", 1))
+    if merged.get("full_sweep") or merged.get("lock_max_hosts"):
         explicit = int(merged.get("max_hosts", host_count))
-        merged["max_hosts"] = max(1, min(explicit, host_count))
+        limit = max(1, min(explicit, host_count))
+        if max_hosts_override is not None:
+            limit = min(limit, max_hosts_override)
+        merged["max_hosts"] = max(1, limit)
         return merged
     limit = _host_limit_for_profile(
         profile,
@@ -165,7 +189,10 @@ def _apply_host_limit(
         max_hosts_override=max_hosts_override,
     )
     merged["max_hosts"] = limit
-    return merged
+    return _scale_max_total_for_host_expansion(
+        merged,
+        previous_max_hosts=previous_max_hosts,
+    )
 
 
 def build_operational_scenario_params(

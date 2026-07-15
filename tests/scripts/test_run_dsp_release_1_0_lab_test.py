@@ -70,7 +70,7 @@ def test_local_mode_creates_expected_files(tmp_path: Path) -> None:
         "--scenario",
         "dummy",
         "--traffic-profile",
-        "low",
+        "normal",
         "--dry-run",
         "--output-dir",
         str(output_dir),
@@ -78,7 +78,7 @@ def test_local_mode_creates_expected_files(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert "traffic_profile=low" in result.stdout
+    assert "traffic_profile=normal" in result.stdout
     assert "event_count=" in result.stdout
     assert "manual_next_steps:" in result.stdout
     assert "generated_files:" in result.stdout
@@ -133,7 +133,7 @@ def test_webshell_mode_creates_expected_files(tmp_path: Path) -> None:
             "--scenario",
             "port_sweep",
             "--traffic-profile",
-            "low",
+            "normal",
             "--webshell-family",
             "jsp",
             "--webshell-url",
@@ -151,7 +151,7 @@ def test_webshell_mode_creates_expected_files(tmp_path: Path) -> None:
         server.stop()
 
     assert result.returncode == 0
-    assert "traffic_profile=low" in result.stdout
+    assert "traffic_profile=normal" in result.stdout
     assert "event_count=" in result.stdout
     assert "manual_next_steps:" in result.stdout
 

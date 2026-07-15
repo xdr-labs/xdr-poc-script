@@ -365,6 +365,12 @@ def build_traffic_summary(
             skipped = _last_evidence(events, sid, "ssh_failure_skipped")
         if not skipped:
             skipped = _last_evidence(events, sid, "rare_protocol_activity_skipped")
+        if not skipped:
+            skipped = _last_evidence(events, sid, "port_sweep_skipped")
+        if not skipped:
+            skipped = _last_evidence(events, sid, "ldap_enumeration_skipped")
+        if not skipped:
+            skipped = _last_evidence(events, sid, "kerberos_failure_skipped")
 
         store_metrics = _scenario_store_metrics(store, registry, run_id, sid)
         use_store_metrics = bool(store_metrics)

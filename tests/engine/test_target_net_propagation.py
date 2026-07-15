@@ -55,10 +55,9 @@ def test_resolve_targets_expands_cidr_not_lab_default(target_net: str):
     assert LAB_FALLBACK not in targets.hosts
 
 
-def test_resolve_targets_empty_uses_lab_fallback_only():
-    targets = resolve_targets("")
-    assert targets.target_net == LAB_TARGET_NET
-    assert targets.hosts == [LAB_FALLBACK]
+def test_resolve_targets_empty_fail_closed():
+    with pytest.raises(ValueError, match="target_net is required"):
+        resolve_targets("")
 
 
 def test_expand_target_net_custom_first_host():
