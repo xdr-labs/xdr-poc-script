@@ -25,6 +25,7 @@ from dsp.protocols.http.sqli_events import (
     build_sql_request_sent_event,
 )
 from dsp.protocols.http.sqli_payloads import (
+    SQLI_CORE_REPEATS_PER_PATTERN,
     SQLI_PAYLOAD_CATEGORIES,
     SQLI_REQUESTS_PER_HOST,
     plan_sqli_requests,
@@ -174,6 +175,9 @@ def run(
     max_hosts = int(params.get("max_hosts", MAX_HOSTS_DEFAULT))
     max_per_host = int(params.get("max_per_host", SQLI_REQUESTS_PER_HOST))
     max_total = int(params.get("max_total", max_per_host * max(1, max_hosts)))
+    core_repeats_per_pattern = int(
+        params.get("core_repeats_per_pattern", SQLI_CORE_REPEATS_PER_PATTERN)
+    )
     write_wire_evidence = bool(params.get("write_wire_evidence", False))
     source = "dry_run" if ctx.dry_run else "local"
     mode = "mock" if ctx.dry_run else "live"
@@ -206,6 +210,7 @@ def run(
         max_hosts=max_hosts,
         max_per_host=max_per_host,
         max_total=max_total,
+        core_repeats_per_pattern=core_repeats_per_pattern,
     )
 
     ports_used = sorted({plan.port for plan in plans})
@@ -361,6 +366,17 @@ def run(
     request_log_path = _write_sqli_request_log(ctx, request_log)
     wire_log_path = _write_sqli_wire_evidence_log(ctx, wire_log) if write_wire_evidence else None
     elapsed = round(time.monotonic() - t0, 3)
+    per_target_requests: Counter[str] = Counter()
+    per_target_time_based: Counter[str] = Counter()
+    per_target_union_select: Counter[str] = Counter()
+    for record in request_log:
+        target = str(record.get("target") or "")
+        per_target_requests[target] += 1
+        category = str(record.get("payload_category") or "")
+        if category == "core_time_based":
+            per_target_time_based[target] += 1
+        elif category == "core_union_select":
+            per_target_union_select[target] += 1
     ctx.event_store.append(
         build_sql_injection_completed_event(
             run_id=ctx.run_id,
@@ -374,6 +390,7 @@ def run(
                 "https_targets_skipped": selection.https_targets_skipped,
                 "request_count": sent_count,
                 "requests_sent": sent_count,
+                "requests_planned": len(plans),
                 "payload_count": payload_count,
                 "response_count": response_count,
                 "duration_sec": elapsed,
@@ -381,6 +398,9 @@ def run(
                 "sample_payloads": sample_payloads,
                 "payload_category_distribution": dict(category_counter),
                 "transport_distribution": dict(transport_counter),
+                "per_target_request_count": dict(per_target_requests),
+                "per_target_time_based_count": dict(per_target_time_based),
+                "per_target_union_select_count": dict(per_target_union_select),
                 "selected_http_target_reason": selection.selected_http_target_reason,
                 "probe_summaries": selection.probe_summaries,
                 "target_probe": selection.probe_summaries,

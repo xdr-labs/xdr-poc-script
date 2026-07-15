@@ -11,7 +11,11 @@ from dsp.execution.remote.models import ScenarioExecutionRequest
 from dsp.protocols.dns.tunnel import plan_dns_tunnel as build_dns_tunnel_plan
 from dsp.protocols.host.behavior import build_host_behavior_plan
 from dsp.protocols.http.non_standard_port_burst import plan_non_standard_port_burst
-from dsp.protocols.http.sqli_payloads import plan_sqli_requests, sql_injection_request_items
+from dsp.protocols.http.sqli_payloads import (
+    SQLI_CORE_REPEATS_PER_PATTERN,
+    plan_sqli_requests,
+    sql_injection_request_items,
+)
 from dsp.protocols.http.urls import plan_followup_requests
 from dsp.protocols.http.user_agents import attach_followup_user_agents
 from dsp.protocols.rare.attempts import plan_rare_protocol_activity as build_rare_protocol_plans
@@ -349,6 +353,9 @@ def plan_sql_injection(targets: TargetSet, params: dict[str, Any], *, dry_run: b
         max_hosts=max_hosts,
         max_per_host=int(params.get("max_per_host", 500)),
         max_total=int(params.get("max_total", 1000)),
+        core_repeats_per_pattern=int(
+            params.get("core_repeats_per_pattern", SQLI_CORE_REPEATS_PER_PATTERN)
+        ),
     )
     requests = sql_injection_request_items(plans)
     return {

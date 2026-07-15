@@ -50,6 +50,8 @@ _SQL_INJECTION_NORMAL: dict[str, Any] = {
     "max_per_host": 500,
     "max_total": 1000,
     "timeout": 10.0,
+    # Per discovered HTTP host: >=100 time-based + >=100 UNION SELECT signatures.
+    "core_repeats_per_pattern": 100,
 }
 _RARE_PROTOCOL_NORMAL: dict[str, Any] = {
     "max_hosts": 2,

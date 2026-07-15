@@ -77,8 +77,19 @@ SQLI_CORE_UNION_SELECT_CATEGORY = "core_union_select"
 SQLI_REPEATS_PER_PATH = 3
 SQLI_REQUESTS_PER_HOST = 500
 # Sensor-aligned signature payloads — minimum repeats per discovered HTTP target.
-SQLI_CORE_REPEATS_PER_PATTERN = 10
-SQLI_CORE_SLEEP_SECONDS: tuple[int, ...] = (5, 6, 7, 8, 9, 5, 6, 7, 8, 10)
+SQLI_CORE_REPEATS_PER_PATTERN = 100
+SQLI_CORE_SLEEP_SECONDS: tuple[int, ...] = (
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    5,
+    6,
+    7,
+    8,
+)
 SQLI_CORE_MD5_SEEDS: tuple[int, ...] = (
     111111111,
     999999999,

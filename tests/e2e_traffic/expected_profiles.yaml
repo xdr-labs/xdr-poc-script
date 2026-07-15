@@ -29,7 +29,7 @@ profiles:
       sql_injection:
         expected_requests: 1000
         payload_count: 53
-        repeat_per_target: 500
+        repeat_per_target: 100
         selected_from: http_targets
         target_scope: max_2_targets
         per_target_count: normal
@@ -137,7 +137,7 @@ profiles:
         skip_allowed_if_no_ssh_hosts: true
       sql_injection:
         payload_count: 53
-        repeat_per_target: 500
+        repeat_per_target: 100
         selected_from: http_targets
         target_scope: all_discovered_targets
         per_target_count: same_as_normal

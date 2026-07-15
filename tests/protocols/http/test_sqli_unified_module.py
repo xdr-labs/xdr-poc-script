@@ -69,8 +69,8 @@ def test_sqli_requests_per_single_target() -> None:
     assert "core_time_based" in categories
     assert "core_union_select" in categories
     assert "suspected_query" in categories
-    assert sum(1 for p in plans if p.payload_category == "core_time_based") >= 10
-    assert sum(1 for p in plans if p.payload_category == "core_union_select") >= 10
+    assert sum(1 for p in plans if p.payload_category == "core_time_based") >= 100
+    assert sum(1 for p in plans if p.payload_category == "core_union_select") >= 100
 
 
 def test_sqli_requests_per_two_targets() -> None:
