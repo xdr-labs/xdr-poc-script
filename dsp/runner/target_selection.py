@@ -225,7 +225,10 @@ def scenario_start_metadata(
             session_markers = 2 if include_markers else 0
             meta["planned_queries"] = (idx_per_host + session_markers) * len(hosts)
     elif scenario_id == "dga":
-        meta["planned_domains"] = int(params.get("max_domains", params.get("max_total", 15)))
+        phase_total = int(params.get("phase1_count", 0)) + int(params.get("phase2_count", 0))
+        meta["planned_domains"] = phase_total or int(
+            params.get("max_domains", params.get("max_total", 0))
+        )
     elif scenario_id in ("ssh_failure", "ldap_enumeration", "kerberos_failure", "smb_login_failure"):
         meta["planned_attempts"] = int(params.get("max_total", 0)) or None
     elif scenario_id == "sql_injection":
@@ -234,10 +237,11 @@ def scenario_start_metadata(
             format_selected_target_labels,
             resolve_http_endpoint_selection,
         )
-        from dsp.protocols.http.urls import compute_requests_per_target, plan_followup_requests
+        from dsp.protocols.http.sqli_payloads import plan_sqli_requests
 
         max_hosts = int(params.get("max_hosts", 2))
-        max_total = int(params.get("max_total", params.get("max_payloads", 10)))
+        max_per_host = int(params.get("max_per_host", params.get("max_total", 500)))
+        max_total = int(params.get("max_total", params.get("max_payloads", 1000)))
         timeout = float(params.get("timeout", 10.0))
         selection = resolve_http_endpoint_selection(
             targets,
@@ -255,5 +259,12 @@ def scenario_start_metadata(
         else:
             meta["selected_targets"] = format_selected_target_labels(selection.selected)
             meta["selected_http_target_reason"] = selection.selected_http_target_reason
-            meta["planned_requests"] = max_total
+            plans = plan_sqli_requests(
+                endpoints=[(ep.host, ep.port) for ep in selection.selected],
+                max_hosts=max_hosts,
+                max_per_host=max_per_host,
+                max_total=max_total,
+                core_repeats_per_pattern=int(params.get("core_repeats_per_pattern", 100)),
+            )
+            meta["planned_requests"] = len(plans)
     return {k: v for k, v in meta.items() if v is not None}

@@ -45,10 +45,15 @@ def traffic_lines_for_scenario(
             continue
         lines.append((label, metrics[key]))
     if scenario_id == "dga":
+        generated = int(metrics.get("dga_domain_generated_count", 0))
+        if generated:
+            lines.append(("queries_sent", generated))
         nx = int(metrics.get("dga_nxdomain_observed_count", 0))
         resolved = int(metrics.get("dga_resolved_observed_count", 0))
-        if nx or resolved:
-            lines.append(("queries_sent", nx + resolved))
+        if nx:
+            lines.append(("nxdomain_observed", nx))
+        if resolved:
+            lines.append(("resolved_observed", resolved))
     if scenario_id == "http_followup":
         tracking = metrics.get("response_tracking")
         if tracking:

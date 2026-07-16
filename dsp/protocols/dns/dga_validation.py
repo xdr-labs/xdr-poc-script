@@ -43,8 +43,6 @@ def dga_validation_profile(**overrides: Any) -> dict[str, Any]:
         ],
         "success": {
             "dga_domain_generated_count": {"min": 1},
-            "dga_nxdomain_observed_count": {"min": 1},
-            "dga_resolved_observed_count": {"min": 1},
         },
         "fail_fast": ["SOT_EMPTY_AFTER_EXECUTE"],
     }

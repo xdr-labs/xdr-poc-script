@@ -23,6 +23,8 @@ Post-fix Kerberos fire-and-forget: **20 attempts complete in <1s** (measured loc
 
 Estimates derived from run console output, `duration_sec` evidence patterns, and traffic-profile parameters. Kerberos elapsed is from observed operator log (`00:03:20`).
 
+> **Note:** Pre-fix volumes below are **historical**. Current normal profile: http_followup **1000**, sql_injection **1000**, dga **45** (35+10), dns_tunnel **~34953** idx (`payload_mb=1.0`, not 50).
+
 | Scenario | Elapsed | Percentage | Notes |
 |----------|---------|------------|-------|
 | kerberos_failure | **200s** | **67.8%** | 20 attempts × ~10s recv timeout per attempt |
@@ -31,8 +33,8 @@ Estimates derived from run console output, `duration_sec` evidence patterns, and
 | ssh_failure | ~18s | 6.1% | 150 auth attempts, timeout 5s |
 | port_sweep | ~5s | 1.7% | 20 TCP probes, concurrency 32 |
 | rare_protocol_activity | ~4s | 1.4% | 4 probes × 3s timeout |
-| dga | ~2s | 0.7% | 15 domains (10 NX + 5 resolvable) |
-| dns_tunnel | ~1s | 0.3% | 50 queries fire-and-forget (0s reported) |
+| dga | ~2s | 0.7% | 15 domains then; **current normal = 45** (35 NX + 10 resolvable) |
+| dns_tunnel | ~1s | 0.3% | 50 queries then; **current normal ≈ 34953** idx @ 1MB |
 | ldap_enumeration | 0s | 0% | skipped — no LDAP discovered |
 | smb_login_failure | 0s | 0% | skipped — no SMB discovered |
 

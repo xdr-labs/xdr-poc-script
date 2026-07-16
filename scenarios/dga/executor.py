@@ -94,6 +94,8 @@ def run(
                 "effective_tld": effective_tld,
                 "phase1_count": phase1_count,
                 "phase2_count": phase2_count,
+                "domains_planned": total_domains,
+                "planned_domains": total_domains,
                 "mode": mode,
             },
         )

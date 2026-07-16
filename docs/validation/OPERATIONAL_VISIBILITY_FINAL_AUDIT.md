@@ -21,7 +21,7 @@ Machine-readable evidence:
 
 | Layer | DGA example |
 |-------|-------------|
-| Reconciliation | `execution_status=full`, `planned=15`, `actual=15` |
+| Reconciliation | `execution_status=full`, `planned=15`, `actual=15` (historical; current normal is **45**) |
 | Validation (S2) | `decision=failed`, `reason=thresholds_not_met` |
 
 Operators saw operational success in console/reconciliation but a failing exit code because threshold validation leaked into the process exit.
@@ -32,9 +32,9 @@ Operators saw operational success in console/reconciliation but a failing exit c
 
 **Symptom:** Console showed `planned_domains=15` but Planned vs Actual Summary showed `planned=0`.
 
-**Root cause:** `dga_started` evidence stores `phase1_count` / `phase2_count` (profile-normal: 10+5=15), not `planned_domains`. `_planned_actual_fields()` only read `planned_domains` and `domains_planned` (absent from `traffic_summary` for DGA).
+**Root cause:** `dga_started` evidence stores `phase1_count` / `phase2_count` (then profile-normal: 10+5=15; **current normal: 35+10=45**), not `planned_domains`. `_planned_actual_fields()` only read `planned_domains` and `domains_planned` (absent from `traffic_summary` for DGA).
 
-**Fix:** Derive planned from `phase1_count + phase2_count`; add DGA block to `traffic_summary.py`.
+**Fix:** Derive planned from `phase1_count + phase2_count`; add DGA block to `traffic_summary.py`. Local `dga_started` now also writes `domains_planned` / `planned_domains`.
 
 ### Problem #3 — Non-Standard Port Burst invisible in OV
 
@@ -92,6 +92,8 @@ S2 threshold failure is visible in `validation.json` and `report.md` Traffic Val
 ## 4. Non-Standard Port Burst Visibility
 
 Audit run `20260619_ddf88a` — `http_followup`:
+
+> **Note:** URL Scan `planned=300` below is a **historical audit observation**. Current normal profile target is **1000** (`max_hosts=2`, `max_per_host=500`, `max_total=1000`).
 
 ### report.md
 
@@ -152,6 +154,8 @@ Nested under `reconciliations.http_followup`:
 ## 6. Reconciliation Consistency Audit
 
 Audit run — all scenarios in normal profile (10 scenarios, host behavior excluded):
+
+> **Note:** Volumes in this table are **historical** (pre-v1.4.0-rc profile raise). Current normal goals: http_followup **1000**, sql_injection **1000**, dns_tunnel **~34953** idx (`payload_mb=1.0`), dga **45** (35+10).
 
 | Scenario | planned | actual | status | planned ≥ actual |
 |----------|--------:|-------:|--------|:---:|

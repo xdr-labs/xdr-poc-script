@@ -192,8 +192,8 @@ def _plan_http_followup(targets: dict[str, Any], params: dict[str, Any], *, dry_
     plans = plan_followup_requests(
         endpoints=endpoints,
         max_hosts=max_hosts,
-        max_per_host=int(params.get("max_per_host", 10)),
-        max_total=int(params.get("max_total", 20)),
+        max_per_host=int(params.get("max_per_host", 500)),
+        max_total=int(params.get("max_total", 1000)),
         include_attack_paths=bool(params.get("include_attack_paths", True)),
     )
     enriched_plans, _ = attach_followup_user_agents(plans)

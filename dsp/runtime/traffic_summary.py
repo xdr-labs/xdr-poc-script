@@ -575,9 +575,24 @@ def build_traffic_summary(
                 or dns_dispatch.get("target"),
             })
         elif sid == "dga":
+            phase1 = int(started.get("phase1_count") or 0)
+            phase2 = int(started.get("phase2_count") or 0)
+            domains_generated_count = _count_events(events, sid, "dga_domain_generated")
+            domains_planned = int(
+                started.get("domains_planned")
+                or started.get("planned_domains")
+                or (phase1 + phase2)
+                or 0
+            )
+            domains_generated = int(
+                completed.get("domains_generated")
+                or domains_generated_count
+                or 0
+            )
             scenario_summary.update({
-                "domains_planned": started.get("domains_planned", 0),
-                "dga_domain_generated_count": _count_events(events, sid, "dga_domain_generated"),
+                "domains_planned": domains_planned,
+                "domains_generated": domains_generated,
+                "dga_domain_generated_count": domains_generated_count,
                 "dga_nxdomain_observed_count": _count_events(events, sid, "dga_nxdomain_observed"),
                 "dga_resolved_observed_count": _count_events(events, sid, "dga_resolved_observed"),
                 "dns_query_method": completed.get("dns_query_method"),

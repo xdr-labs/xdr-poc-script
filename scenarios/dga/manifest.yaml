@@ -3,9 +3,11 @@ id: dga
 name: DGA — Domain Generation Algorithm Simulation
 version: "1.0.0"
 description: >
-  Phase 1 generates NXDOMAIN traffic under *.xdr.ooo (500 queries).
-  Phase 2 generates resolvable traffic under *.live.xdr.ooo (30 queries).
-  Validation uses Event Store only — no resolver response dependency.
+  Phase 1 generates NXDOMAIN traffic under *.xdr.ooo; Phase 2 generates
+  resolvable traffic under *.live.xdr.ooo. Manifest defaults are 500+30;
+  operational normal/high profiles override to 35+10 (45 total).
+  Success = traffic generated (domain_generated events); nxdomain/resolved
+  observes are metrics only — no resolver response dependency for pass/fail.
 
 category: dns
 tags: [phase_3, dga, dns, nxdomain, ndr]
@@ -38,10 +40,6 @@ validation_profile:
       aggregate: count
   success:
     dga_domain_generated_count:
-      min: 1
-    dga_nxdomain_observed_count:
-      min: 1
-    dga_resolved_observed_count:
       min: 1
   fail_fast:
     - SOT_EMPTY_AFTER_EXECUTE

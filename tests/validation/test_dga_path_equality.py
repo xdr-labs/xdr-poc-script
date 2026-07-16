@@ -88,6 +88,33 @@ def test_dga_path_equality():
     assert report.traffic_validation[0].metrics == result.metrics
 
 
+def test_dga_success_with_generated_only_no_observes():
+    """Charter: Success = traffic generated; observes are not required."""
+    store = EventStore(":memory:")
+    run_id = "dga_gen_only"
+    store.open_run(run_id)
+    _append_lifecycle(store, run_id, "dga")
+    store.append(
+        build_dga_domain_generated_event(
+            run_id=run_id,
+            scenario_id="dga",
+            target="10.10.10.20",
+            fqdn="rf2xh8lxoxv.xdr.ooo",
+            source="dry_run",
+            evidence={"phase": 1},
+        )
+    )
+
+    loader = PluginLoader()
+    registry = loader.discover_and_load()
+    result = ValidationEngine(store, registry).validate(run_id, "dga")
+
+    assert result.decision == ValidationDecision.SUCCESS
+    assert result.metrics["dga_domain_generated_count"] == 1
+    assert result.metrics.get("dga_nxdomain_observed_count", 0) == 0
+    assert result.metrics.get("dga_resolved_observed_count", 0) == 0
+
+
 def test_dga_empty_traffic_code_failure():
     store = EventStore(":memory:")
     run_id = "dga_empty"
