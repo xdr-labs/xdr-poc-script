@@ -25,43 +25,52 @@ has_whiptail() {
   command -v whiptail >/dev/null 2>&1
 }
 
-# Classic newt palette (Sensor-Installer / original): Tab focus is visible.
-# Ubuntu /etc/newt/palette uses magenta entry/label — override every slot we use.
-# Keys must be actbutton/sellistbox (not buttonact); otherwise Ok stays "green"
-# and the list highlight never dims when focus moves to Ok/Cancel.
+# Use libnewt's built-in default palette (true Linux/whiptail defaults).
+#
+# Why custom white/blue themes break Tab on Ok/Cancel:
+#   whiptail menus use *compact* buttons. With ANSI colors, focus drawing is:
+#     inactive compact → COLORSET_COMPACTBUTTON
+#     active   compact → COLORSET_BUTTON   (not actbutton!)
+#   If button fg/bg == compactbutton fg/bg, Tab focus is invisible.
+#   Linux defaults intentionally differ:
+#     compactbutton=black,lightgray  (idle <Ok>/<Cancel>)
+#     button=lightgray,red           (focused compact button → red)
+#
+# Ubuntu's /etc/newt/palette only forces magenta on a few slots and leaves the
+# rest at these defaults — that is why Sensor-Installer.sh Tab focus looks OK
+# when it does not override NEWT_COLORS. We re-apply the full default palette
+# so Ubuntu magenta cannot win on entry/label/list, and button focus stays clear.
 setup_whiptail_theme() {
   if [[ "${DSP_MENU_KEEP_NEWT_COLORS:-}" == "1" ]]; then
     return 0
   fi
   unset NEWT_COLORS_FILE
+  # Exact values from libnewt newtDefaultColorPalette (newt.c).
   export NEWT_COLORS='
-root=,blue
-border=white,blue
-window=,white
-shadow=,black
-title=white,blue
-button=black,white
-actbutton=white,blue
-compactbutton=black,white
-checkbox=black,white
-actcheckbox=white,blue
-entry=black,white
-disentry=gray,white
-disabledentry=gray,white
-label=black,white
-listbox=black,white
-actlistbox=white,blue
-sellistbox=black,white
-actsellistbox=white,blue
-textbox=black,white
-acttextbox=black,cyan
-helpline=black,white
-roottext=white,blue
+root=white,blue
+border=black,lightgray
+window=black,lightgray
+shadow=white,black
+title=red,lightgray
+button=lightgray,red
+actbutton=red,lightgray
+checkbox=lightgray,blue
+actcheckbox=lightgray,red
+entry=lightgray,blue
+label=blue,lightgray
+listbox=black,lightgray
+actlistbox=lightgray,blue
+textbox=black,lightgray
+acttextbox=lightgray,red
+helpline=white,blue
+roottext=lightgray,blue
 emptyscale=,blue
-fullscale=,blue
-radiolabel=black,white
-actselradiolabel=white,blue
-scrollbar=,blue
+fullscale=,red
+disentry=blue,lightgray
+disabledentry=blue,lightgray
+compactbutton=black,lightgray
+actsellistbox=lightgray,red
+sellistbox=black,brown
 '
 }
 
