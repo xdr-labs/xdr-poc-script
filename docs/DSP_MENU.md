@@ -7,7 +7,7 @@ SSH-friendly launcher for updating, configuring, and running DSP without memoriz
 Install or update DSP and launch this menu in one step:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/v1.4.0/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Custom path, no menu launch:
@@ -38,7 +38,7 @@ The menu uses **whiptail** when installed (common on Ubuntu/Debian). If whiptail
 
 | # | Action | Description |
 |---|--------|-------------|
-| 1 | Update latest patch | `git fetch`, checkout `release/v1.4.0`, `git pull` |
+| 1 | Update latest patch | `git fetch`, checkout `release/v1.4.0-rc`, `git pull` |
 | 2 | Configure environment | Save operator settings to `~/.dsp/config.env` |
 | 3 | Run scenario | `dsp run` (local or webshell from config) |
 | 4 | Show latest report | Latest run under `~/.dsp/runs/` |

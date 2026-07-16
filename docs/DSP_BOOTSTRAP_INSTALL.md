@@ -5,13 +5,13 @@ One-command install/update for a new host. Clones or updates the repository, cre
 ## One-line install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/v1.4.0/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Alternative:
 
 ```bash
-wget -O install-dsp.sh https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/v1.4.0/install-dsp.sh
+wget -O install-dsp.sh https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh
 bash install-dsp.sh
 ```
 
@@ -19,7 +19,7 @@ bash install-dsp.sh
 
 1. Checks **git**, **python3**, **python3 venv** (`import venv`), and **pip** (or `ensurepip`)
 2. Ensures `~/.dsp/` exists (does **not** overwrite `~/.dsp/config.env` if present)
-3. Clones or updates `release/v1.4.0` into the install directory
+3. Clones or updates `release/v1.4.0-rc` into the install directory
 4. Creates `.venv` if missing
 5. Runs `pip install -e .` in the venv
 6. Makes `dsp-menu.sh` executable
@@ -32,7 +32,7 @@ Existing run artifacts under `~/.dsp/runs/` are never deleted.
 | Variable | Default |
 |----------|---------|
 | `DSP_REPO_DIR` | `/home/aella/xdr-poc-script` |
-| `DSP_RELEASE_BRANCH` | `release/v1.4.0` |
+| `DSP_RELEASE_BRANCH` | `release/v1.4.0-rc` |
 | `DSP_REPO_URL` | `https://github.com/RickLee-kr/xdr-poc-script.git` |
 | `DSP_NO_LAUNCH` | `0` (launch menu after install) |
 
@@ -55,7 +55,7 @@ Useful for CI, smoke checks, or rerunning the installer safely.
 The script is **idempotent**. Run the same one-liner again to `git pull` and reinstall the package:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/v1.4.0/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Or from an existing clone:

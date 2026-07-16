@@ -13,7 +13,7 @@ DSP runs attack-simulation scenarios (port sweep, DNS tunnel, HTTP follow-up, SQ
 **One command** — clone, install, and open the operator menu:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/v1.4.0/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Then in the menu:
@@ -52,7 +52,7 @@ DSP validates **traffic and event generation**, not vendor alert firing.
 Run this **once** on a new machine. It clones or updates the repo, creates `.venv`, installs DSP, and opens the menu.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/v1.4.0/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Install only (no menu): `DSP_NO_LAUNCH=1 bash install-dsp.sh`
@@ -71,7 +71,7 @@ cd /path/to/xdr-poc-script
 | **Configure environment** | Target network (CIDR), profile, local vs webshell, webshell URL |
 | **Run scenario** | Execute using saved settings |
 | **Show latest report** | Open the most recent run under `~/.dsp/runs/` |
-| **Update latest patch** | Pull `release/v1.4.0` |
+| **Update latest patch** | Pull `release/v1.4.0-rc` |
 | **Show version/status** | Git state, `dsp --version`, current config |
 
 **Config file:** `~/.dsp/config.env`  

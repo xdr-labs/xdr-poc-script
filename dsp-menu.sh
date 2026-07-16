@@ -8,7 +8,8 @@ DEFAULT_REPO_DIR="${SCRIPT_DIR}"
 CONFIG_DIR="${HOME}/.dsp"
 CONFIG_FILE="${CONFIG_DIR}/config.env"
 RUNS_DIR="${HOME}/.dsp/runs"
-RELEASE_BRANCH="release/v1.4.0"
+# Active operator line — must match install-dsp.sh / normal_profile_contract.OPERATOR_RELEASE_BRANCH
+RELEASE_BRANCH="${DSP_RELEASE_BRANCH:-release/v1.4.0-rc}"
 
 # shellcheck disable=SC2034
 MENU_ITEMS=(
@@ -184,6 +185,11 @@ do_update() {
   {
     printf 'Repository: %s\n' "$DSP_REPO_DIR"
     printf 'Branch: %s\n\n' "$RELEASE_BRANCH"
+    if [[ "$RELEASE_BRANCH" == "release/v1.4.0" ]]; then
+      printf 'ERROR: release/v1.4.0 is retired (stale volumes HTTP=300/DNS=50/DGA=15).\n'
+      printf 'Use release/v1.4.0-rc (unset DSP_RELEASE_BRANCH or set it to release/v1.4.0-rc).\n'
+      exit 1
+    fi
     if [[ ! -d "${DSP_REPO_DIR}/.git" ]]; then
       printf 'ERROR: %s is not a git repository.\n' "$DSP_REPO_DIR"
       exit 1
@@ -192,6 +198,10 @@ do_update() {
     git fetch origin
     git checkout "$RELEASE_BRANCH"
     git pull origin "$RELEASE_BRANCH"
+    if [[ -x .venv/bin/pip ]]; then
+      .venv/bin/pip install -e . --quiet
+      printf '\nEditable install refreshed (.venv).\n'
+    fi
     printf '\nUpdate complete.\n'
     git log -1 --oneline
   } >"$log" 2>&1 || true
@@ -328,6 +338,48 @@ do_configure() {
   fi
 }
 
+verify_normal_profile_volumes() {
+  # Guard against stale checkouts / wrong editable installs.
+  local pyout first
+  pyout="$(
+    python3 - <<'PYINNER'
+from dsp.runtime.normal_profile_contract import (
+    normal_profile_preflight_summary,
+    validate_normal_profile_templates,
+)
+
+errors = validate_normal_profile_templates()
+if errors:
+    print("FAIL")
+    print("\n".join(errors))
+else:
+    summary = normal_profile_preflight_summary()
+    print("OK")
+    print(
+        f"http={summary['http_max_total']} sqli={summary['sqli_max_total']} "
+        f"dns_idx~{summary['dns_idx_chunks']} dga={summary['dga_total']} "
+        f"branch={summary['operator_release_branch']}"
+    )
+PYINNER
+  )"
+  if [[ -z "$pyout" ]] || [[ "$pyout" == *Traceback* ]]; then
+    err "Cannot verify normal profile volumes (import failed). Reinstall: pip install -e ${DSP_REPO_DIR}
+${pyout}"
+    return 1
+  fi
+  first="${pyout%%$'\n'*}"
+  if [[ "$first" != "OK" ]]; then
+    err "Stale normal profile volumes detected in ${DSP_REPO_DIR}:
+
+${pyout}
+
+Use menu option 1 (Update) to pull ${RELEASE_BRANCH}, then: pip install -e ${DSP_REPO_DIR}"
+    return 1
+  fi
+  printf 'Volume preflight: %s\n' "$(printf '%s\n' "$pyout" | tail -n1)"
+  return 0
+}
+
 do_run() {
   load_config
   activate_dsp_env
@@ -337,7 +389,7 @@ do_run() {
     return
   fi
 
-  local log rc
+  local log rc preflight
   log="$(mktemp)"
 
   # Stream progress to the terminal (not only a post-run textbox). Redirecting
@@ -346,6 +398,7 @@ do_run() {
   printf 'Profile: %s\n' "$PROFILE" | tee -a "$log"
   printf 'Target net: %s\n' "$TARGET_NET" | tee -a "$log"
   printf 'Execution mode: %s\n' "$EXECUTION_MODE" | tee -a "$log"
+  printf 'Release branch target: %s\n' "$RELEASE_BRANCH" | tee -a "$log"
   printf 'Live verbose output below — discovery and each scenario action are shown.\n\n' | tee -a "$log"
 
   cd "$DSP_REPO_DIR" || {
@@ -353,6 +406,21 @@ do_run() {
     rm -f "$log"
     return
   }
+
+  if [[ -d .git ]]; then
+    printf 'Git: %s @ %s\n' \
+      "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)" \
+      "$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" | tee -a "$log"
+  fi
+
+  if [[ "${PROFILE,,}" == "normal" ]] || [[ "${PROFILE,,}" == "balanced" ]] || [[ "${PROFILE,,}" == "low" ]]; then
+    if ! preflight="$(verify_normal_profile_volumes 2>&1)"; then
+      printf '%s\n' "$preflight" | tee -a "$log"
+      rm -f "$log"
+      return
+    fi
+    printf '%s\n' "$preflight" | tee -a "$log"
+  fi
 
   export PYTHONUNBUFFERED=1
   local dsp_args=(--verbose --profile "$PROFILE" --target-net "$TARGET_NET")

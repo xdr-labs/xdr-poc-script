@@ -25,7 +25,8 @@ optional wrapper scripts). It must not vendor editable DSP source.
 | Location | Status |
 |----------|--------|
 | `git@github.com:RickLee-kr/xdr-poc-script.git` | **Official SoT** |
-| Branch `release/v1.4.0` | Active release line (tag `v1.4.0`) |
+| Branch `release/v1.4.0-rc` | Active operator release line (menu/install default) |
+| Tag `v1.4.0` | Historical freeze only — do not use for install/update |
 | Local path `/home/aella/xdr-poc-script` | Default operator checkout |
 | `detection-scenario-platform.git` | **Deprecated** — do not push |
 | `xdr-lab-appliance/detection-scenario-platform/` | **Removed** — never re-add |

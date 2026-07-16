@@ -17,6 +17,11 @@ die() {
   exit 1
 }
 
+# Retired line shipped stale normal volumes (HTTP 300 / DNS max_chunks 50 / DGA 15).
+if [[ "${RELEASE_BRANCH}" == "release/v1.4.0" ]]; then
+  die "release/v1.4.0 is retired; use release/v1.4.0-rc (unset DSP_RELEASE_BRANCH)"
+fi
+
 require_cmd() {
   local name="$1"
   command -v "$name" >/dev/null 2>&1 || die "missing required command: ${name}"
