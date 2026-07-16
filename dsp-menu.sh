@@ -25,6 +25,46 @@ has_whiptail() {
   command -v whiptail >/dev/null 2>&1
 }
 
+# Classic newt palette (Sensor-Installer / original): Tab focus is visible.
+# Ubuntu /etc/newt/palette uses magenta entry/label — override every slot we use.
+# Keys must be actbutton/sellistbox (not buttonact); otherwise Ok stays "green"
+# and the list highlight never dims when focus moves to Ok/Cancel.
+setup_whiptail_theme() {
+  if [[ "${DSP_MENU_KEEP_NEWT_COLORS:-}" == "1" ]]; then
+    return 0
+  fi
+  unset NEWT_COLORS_FILE
+  export NEWT_COLORS='
+root=,blue
+border=white,blue
+window=,white
+shadow=,black
+title=white,blue
+button=black,white
+actbutton=white,blue
+compactbutton=black,white
+checkbox=black,white
+actcheckbox=white,blue
+entry=black,white
+disentry=gray,white
+disabledentry=gray,white
+label=black,white
+listbox=black,white
+actlistbox=white,blue
+sellistbox=black,white
+actsellistbox=white,blue
+textbox=black,white
+acttextbox=black,cyan
+helpline=black,white
+roottext=white,blue
+emptyscale=,blue
+fullscale=,blue
+radiolabel=black,white
+actselradiolabel=white,blue
+scrollbar=,blue
+'
+}
+
 show_webshell_setup_help() {
   # Plain msgbox (no --scrolltext): focus stays on <Ok>, no scroll arrow.
   whiptail --title "Configure — Webshell help" --msgbox \
@@ -544,31 +584,9 @@ do_show_status() {
 
 main() {
   ensure_config_dir
-  # Ubuntu's /etc/newt/palette uses entry=,magenta — typed CIDR text is nearly
-  # invisible (dark red on magenta). Force a high-contrast entry field.
-  export NEWT_COLORS='
-root=white,blue
-border=black,white
-window=black,white
-shadow=black,gray
-title=black,white
-button=black,white
-buttonact=white,blue
-compactbutton=black,white
-checkbox=black,white
-entry=black,white
-disentry=gray,white
-label=black,white
-listbox=black,white
-actlistbox=white,blue
-actsellistbox=black,cyan
-textbox=black,white
-acttextbox=black,cyan
-helpline=white,blue
-roottext=white,blue
-emptyscale=white,blue
-'
-  unset NEWT_COLORS_FILE
+  if has_whiptail; then
+    setup_whiptail_theme
+  fi
   while true; do
     choice="$(pick_choice || true)"
     case "${choice:-}" in
