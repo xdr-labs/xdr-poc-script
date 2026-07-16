@@ -49,7 +49,7 @@ def test_dns_tunnel_profile_payload_and_host_semantics() -> None:
     normal = scenario_params_for_profile("dns_tunnel", "normal")
     high = scenario_params_for_profile("dns_tunnel", "high")
 
-    assert normal["payload_mb"] == high["payload_mb"] == 1.0
+    assert normal["payload_mb"] == high["payload_mb"] == 0.5
     assert normal["max_hosts"] == 1
     assert normal.get("lock_max_hosts") is True
     assert high.get("lock_max_hosts") is not True
@@ -58,8 +58,8 @@ def test_dns_tunnel_profile_payload_and_host_semantics() -> None:
 
 
 def test_profile_dns_tunnel_payload_mb() -> None:
-    assert scenario_params_for_profile("dns_tunnel", "normal")["payload_mb"] == 1.0
-    assert scenario_params_for_profile("dns_tunnel", "high")["payload_mb"] == 1.0
+    assert scenario_params_for_profile("dns_tunnel", "normal")["payload_mb"] == 0.5
+    assert scenario_params_for_profile("dns_tunnel", "high")["payload_mb"] == 0.5
 
 
 def test_dns_tunnel_start_metadata_uses_payload_volume_not_fixed_cap() -> None:
@@ -77,9 +77,9 @@ def test_dns_tunnel_start_metadata_uses_payload_volume_not_fixed_cap() -> None:
     )
     params = scenario_params_for_profile("dns_tunnel", "normal")
     meta = scenario_start_metadata("dns_tunnel", targets, params)
-    idx_per_host = plan_chunk_count(1.0, CHUNK_SIZE_DEFAULT)
-    assert meta["payload_mb"] == 1.0
-    assert meta["payload_bytes"] == int(1.0 * 1024 * 1024)
+    idx_per_host = plan_chunk_count(0.5, CHUNK_SIZE_DEFAULT)
+    assert meta["payload_mb"] == 0.5
+    assert meta["payload_bytes"] == int(0.5 * 1024 * 1024)
     assert meta["planned_queries"] == (idx_per_host + 2) * 1  # max_hosts=1
     assert meta["planned_queries"] != 50
 

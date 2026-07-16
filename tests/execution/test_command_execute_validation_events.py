@@ -6,11 +6,20 @@ import base64
 import re
 from unittest.mock import MagicMock
 
+import pytest
+
 from dsp.engine import RunConfig, RunContext
 from dsp.event_store import EventStore
+from dsp.execution.remote.command import execute as execute_mod
 from dsp.execution.remote.command.execute import execute_command_plan
 from dsp.execution.remote.command.models import DNS_QUERY_METHOD_PYTHON_SOCKET_UDP53
 from dsp.execution.remote.models import ScenarioExecutionRequest
+
+
+@pytest.fixture(autouse=True)
+def _fast_detached_dns_tunnel_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(execute_mod, "DNS_TUNNEL_POLL_INTERVAL_SEC", 0.0)
+    monkeypatch.setattr(execute_mod.time, "sleep", lambda _s: None)
 
 
 def _ctx(tmp_path) -> RunContext:
@@ -37,7 +46,11 @@ def _request(scenario_id: str) -> ScenarioExecutionRequest:
 
 
 def _mock_dns_tunnel_markers(provider: MagicMock, marker_text: str) -> None:
-    provider.run_remote_command.return_value = b""
+    # Detached session: launch ACK, then poll reports SESSION_DONE count.
+    provider.run_remote_command.side_effect = [
+        b"DNS_TUNNEL_LAUNCHED:1\n",
+        b"1\n",
+    ]
     provider.fetch_remote_file_via_cat.return_value = marker_text.encode("utf-8")
 
 
@@ -76,10 +89,11 @@ def test_dns_tunnel_command_evidence_includes_python_socket_method(tmp_path) -> 
     assert completed.evidence.get("dns_tunnel_query_sent_count") == 1
     assert completed.evidence.get("webshell_http_dispatches") == 1
     assert http_calls == 1
-    assert provider.run_remote_command.call_count == 1
+    assert provider.run_remote_command.call_count >= 2
     dispatched = next(e for e in events if e.event == "webshell_command_dispatched")
     remote_command = str(dispatched.evidence.get("remote_command"))
     assert "python3 -c" in remote_command
+    assert "nohup" in remote_command
 
     payload = _extract_b64_python_payload(remote_command)
     script = base64.b64decode(payload.encode("ascii")).decode("utf-8")
@@ -164,7 +178,7 @@ def test_dns_tunnel_session_timeout_still_reads_marker_file(tmp_path) -> None:
     provider = MagicMock()
     fqdn = "idx-0000-abc.dns-tunnel.com"
     provider.run_remote_command.side_effect = TimeoutError("session timed out")
-    _mock_dns_tunnel_markers(provider, f"DNS_TUNNEL_SENT:{fqdn}\n")
+    provider.fetch_remote_file_via_cat.return_value = f"DNS_TUNNEL_SENT:{fqdn}\n".encode("utf-8")
     plan = {
         "type": "dns_tunnel",
         "mode": "live",

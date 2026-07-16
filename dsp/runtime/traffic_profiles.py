@@ -17,8 +17,8 @@ _PROFILE_ALIASES: dict[str, str] = {
 # Profile-level DNS tunnel payload sizes (MB).
 # high matches normal per-target payload; coverage expands via max_hosts only.
 _PROFILE_DNS_TUNNEL_PAYLOAD_MB: dict[str, float] = {
-    "normal": 1.0,
-    "high": 1.0,
+    "normal": 0.5,
+    "high": 0.5,
 }
 
 # DGA total domain counts (phase1 + phase2) per operational profile.

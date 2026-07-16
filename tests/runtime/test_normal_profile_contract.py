@@ -19,7 +19,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 def test_normal_profile_volume_contract() -> None:
     assert validate_normal_profile_templates() == []
     assert_normal_profile_contract()
-    assert expected_dns_tunnel_idx_chunks() == 34953
+    assert expected_dns_tunnel_idx_chunks() == 17477
 
 
 def test_normal_scenario_order_port_early_dns_last() -> None:

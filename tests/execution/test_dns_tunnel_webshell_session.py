@@ -6,9 +6,12 @@ import base64
 import re
 from unittest.mock import MagicMock
 
+import pytest
+
 from dsp.engine import RunConfig, RunContext
 from dsp.engine.scenario_engine import TargetSet
 from dsp.event_store import EventQuery, EventStore
+from dsp.execution.remote.command import execute as execute_mod
 from dsp.execution.remote.command.execute import execute_command_plan
 from dsp.execution.remote.command.models import DNS_QUERY_METHOD_PYTHON_SOCKET_UDP53
 from dsp.execution.remote.command.planner import _plan_dns_tunnel
@@ -25,6 +28,12 @@ from dsp.protocols.dns.tunnel import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _fast_detached_dns_tunnel_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(execute_mod, "DNS_TUNNEL_POLL_INTERVAL_SEC", 0.0)
+    monkeypatch.setattr(execute_mod.time, "sleep", lambda _s: None)
+
+
 def _targets() -> TargetSet:
     return TargetSet(
         target_net="10.10.10.0/24",
@@ -36,7 +45,10 @@ def _targets() -> TargetSet:
 
 
 def _mock_dns_tunnel_markers(provider: MagicMock, marker_text: str) -> None:
-    provider.run_remote_command.return_value = b""
+    provider.run_remote_command.side_effect = [
+        b"DNS_TUNNEL_LAUNCHED:1\n",
+        b"1\n",
+    ]
     provider.fetch_remote_file_via_cat.return_value = marker_text.encode("utf-8")
 
 
@@ -64,7 +76,12 @@ def test_webshell_dns_tunnel_one_http_dispatch_per_target(tmp_path) -> None:
         [f"DNS_TUNNEL_SENT:{item['fqdn']}" for item in queries]
         + ["DNS_TUNNEL_SESSION_DONE"]
     )
-    _mock_dns_tunnel_markers(provider, session_output)
+    # Launch returns quickly; first poll reports SESSION_DONE count.
+    provider.run_remote_command.side_effect = [
+        b"DNS_TUNNEL_LAUNCHED:12345\n",
+        b"1\n",
+    ]
+    provider.fetch_remote_file_via_cat.return_value = session_output.encode("utf-8")
 
     http_calls = execute_command_plan(
         plan,
@@ -80,11 +97,14 @@ def test_webshell_dns_tunnel_one_http_dispatch_per_target(tmp_path) -> None:
         ),
     )
 
-    assert http_calls == 1
-    assert provider.run_remote_command.call_count == 1
+    assert http_calls >= 1
+    # Detached session: launch + at least one poll, then marker cat.
+    assert provider.run_remote_command.call_count >= 2
     assert provider.fetch_remote_file_via_cat.call_count == 1
-    remote_command = provider.run_remote_command.call_args[0][0]
+    remote_command = provider.run_remote_command.call_args_list[0][0][0]
     assert "python3 -c" in remote_command
+    assert "nohup" in remote_command
+    assert "DNS_TUNNEL_LAUNCHED" in remote_command
     assert ".sent" in remote_command
 
     candidates = re.findall(r"[A-Za-z0-9+/=]{100,}", remote_command)
@@ -158,19 +178,26 @@ def test_local_webshell_planner_fqdn_parity() -> None:
     assert idx_fqdns[0].startswith("idx-0000-")
 
 
-def test_two_mb_plan_idx_count() -> None:
-    total = plan_chunk_count(PAYLOAD_MB_DEFAULT, CHUNK_SIZE_DEFAULT)
-    assert total == (2 * 1024 * 1024 + CHUNK_SIZE_DEFAULT - 1) // CHUNK_SIZE_DEFAULT
-    assert total >= 69900
+def test_one_mb_plan_idx_count() -> None:
+    total = plan_chunk_count(1.0, CHUNK_SIZE_DEFAULT)
+    assert total == (1 * 1024 * 1024 + CHUNK_SIZE_DEFAULT - 1) // CHUNK_SIZE_DEFAULT
+    assert total == 34953
+
+
+def test_half_mb_plan_idx_count() -> None:
+    total = plan_chunk_count(0.5, CHUNK_SIZE_DEFAULT)
+    assert total == (512 * 1024 + CHUNK_SIZE_DEFAULT - 1) // CHUNK_SIZE_DEFAULT
+    assert total == 17477
 
 
 def test_normal_profile_payload_mb_drives_full_volume() -> None:
-    """Operational normal profile must not cap chunks; payload_mb=2.0 sets volume."""
+    """Operational normal profile must not cap chunks; payload_mb=0.5 sets volume."""
     from dsp.runtime.traffic_profiles import scenario_params_for_profile
 
     params = scenario_params_for_profile("dns_tunnel", "normal")
     plan = plan_dns_tunnel(_targets(), params, dry_run=False)
-    expected_idx = plan_chunk_count(PAYLOAD_MB_DEFAULT, CHUNK_SIZE_DEFAULT)
+    expected_idx = plan_chunk_count(0.5, CHUNK_SIZE_DEFAULT)
+    assert params.get("payload_mb") == 0.5
     assert plan.get("max_chunks") is None
     idx_count = sum(1 for q in plan["queries"] if q.get("query_role") == "idx_chunk")
     assert idx_count == expected_idx
@@ -178,7 +205,7 @@ def test_normal_profile_payload_mb_drives_full_volume() -> None:
 
 
 def test_webshell_high_profile_payload_mb_drives_volume() -> None:
-    """Operational high profile must not cap chunks; payload_mb=4.0 sets volume."""
+    """Operational high profile uses same per-target payload as normal (0.5 MB)."""
     from dsp.runtime.traffic_profiles import scenario_params_for_profile
 
     alive = [f"221.139.249.{h}" for h in (101, 102, 103, 110, 113, 116, 118, 122, 126)]
@@ -191,7 +218,8 @@ def test_webshell_high_profile_payload_mb_drives_volume() -> None:
     )
     params = scenario_params_for_profile("dns_tunnel", "high")
     plan = plan_dns_tunnel(targets, params, dry_run=False)
-    expected_idx = plan_chunk_count(4.0, CHUNK_SIZE_DEFAULT)
+    expected_idx = plan_chunk_count(0.5, CHUNK_SIZE_DEFAULT)
+    assert params.get("payload_mb") == 0.5
     assert plan.get("max_chunks") is None
     idx_count = sum(1 for q in plan["queries"] if q.get("query_role") == "idx_chunk")
     assert idx_count == expected_idx

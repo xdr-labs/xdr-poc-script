@@ -85,6 +85,22 @@ def _dns_tunnel_session_completed(session_output: str, marker_output: str) -> bo
     return dns_tunnel_session_script_completed(combined)
 
 
+def _dns_tunnel_poll_reports_done(poll_output: str) -> bool:
+    """True when remote ``grep -c SESSION_DONE`` reports a positive count."""
+    for token in normalize_webshell_command_output(poll_output).split():
+        try:
+            if int(token) > 0:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+DNS_TUNNEL_LAUNCH_TIMEOUT_SEC = 20.0
+DNS_TUNNEL_POLL_TIMEOUT_SEC = 10.0
+DNS_TUNNEL_POLL_INTERVAL_SEC = 5.0
+
+
 def _parse_dga_sent_marker(text: str) -> bool:
     for line in text.splitlines():
         if line.strip().startswith(DGA_SENT_LINE_PREFIX):
@@ -708,7 +724,7 @@ def _execute_dns_tunnel(
                 "planned_chunks": idx_count,
                 "mode": plan.get("mode", "live"),
                 "dns_query_method": dns_method,
-                "execution_mode": "dns_tunnel_session",
+                "execution_mode": session_meta.get("execution_mode", "dns_tunnel_session_detached"),
                 "session_id": session_id,
                 "target": target,
                 "target_selection": plan.get("target_selection", "alive_hosts"),
@@ -740,6 +756,8 @@ def _execute_dns_tunnel(
         if mock:
             command = mock_noop_command()
             timeout_seconds = 30
+            poll_attempts = 0
+            session_script_completed = True
             dispatch_status = _dispatch(provider, command, timeout_seconds=timeout_seconds)
             dispatch_transport_ok = dispatch_status == CommandStatus.COMPLETED.value
             session_output = ""
@@ -753,6 +771,7 @@ def _execute_dns_tunnel(
             )
         else:
             command = session_meta["remote_command"]
+            poll_command = str(session_meta.get("poll_done_command") or "")
             timeout_seconds = compute_dns_tunnel_session_timeout_sec(
                 payload_mb,
                 chunk_size,
@@ -764,20 +783,52 @@ def _execute_dns_tunnel(
             session_output = ""
             marker_output = ""
             sent_fqdns = frozenset()
+            session_script_completed = False
+            poll_attempts = 0
             try:
+                # Detached launch returns quickly; servlet ~30s envelopes must not host the send loop.
                 raw_output = provider.run_remote_command(
                     command,
-                    timeout_seconds=float(timeout_seconds),
+                    timeout_seconds=DNS_TUNNEL_LAUNCH_TIMEOUT_SEC,
                 )
                 dispatch_transport_ok = True
                 dispatch_status = CommandStatus.COMPLETED.value
                 session_output = normalize_webshell_command_output(raw_output)
             except Exception as exc:
                 session_output = str(exc)
+
+            if dispatch_transport_ok and poll_command:
+                deadline = time.monotonic() + float(timeout_seconds)
+                while time.monotonic() < deadline:
+                    poll_attempts += 1
+                    try:
+                        poll_raw = provider.run_remote_command(
+                            poll_command,
+                            timeout_seconds=DNS_TUNNEL_POLL_TIMEOUT_SEC,
+                        )
+                        poll_text = normalize_webshell_command_output(poll_raw)
+                        session_output = f"{session_output}\n{poll_text}".strip()
+                        if _dns_tunnel_poll_reports_done(poll_text):
+                            session_script_completed = True
+                            break
+                    except StopIteration:
+                        break
+                    except Exception as exc:
+                        session_output = f"{session_output}\npoll_error:{exc}".strip()
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    time.sleep(min(DNS_TUNNEL_POLL_INTERVAL_SEC, max(0.0, remaining)))
+
             marker_output = _collect_dns_tunnel_marker_output(
                 provider,
                 session_meta["marker_output_path"],
             )
+            if not session_script_completed:
+                session_script_completed = _dns_tunnel_session_completed(
+                    session_output,
+                    marker_output,
+                )
             sent_fqdns = _resolve_dns_tunnel_sent_fqdns(
                 session_output=session_output,
                 marker_output=marker_output,
@@ -793,11 +844,10 @@ def _execute_dns_tunnel(
             "timeout_seconds": timeout_seconds,
             "dns_tunnel_sendto_success_count": len(sent_fqdns),
             "dns_tunnel_planned_queries": len(target_queries),
-            "dns_tunnel_session_script_completed": _dns_tunnel_session_completed(
-                session_output,
-                marker_output,
-            ),
+            "dns_tunnel_session_script_completed": session_script_completed,
+            "dns_tunnel_poll_attempts": poll_attempts,
             "marker_output_path": session_meta["marker_output_path"],
+            "execution_mode": session_meta.get("execution_mode", "dns_tunnel_session"),
         }
         if session_output:
             outcome_payload["session_output_preview"] = session_output[:500]
@@ -878,11 +928,13 @@ def _execute_dns_tunnel(
             "dns_tunnel_planned_queries": len(target_queries),
             "webshell_http_dispatches": http_dispatches,
             "dns_query_method": dns_method,
-            "execution_mode": "dns_tunnel_session",
+            "execution_mode": session_meta.get("execution_mode", "dns_tunnel_session_detached"),
             "session_id": session_id,
             "target_selection": plan.get("target_selection", "alive_hosts"),
             "send_interval_sec": send_interval,
             "payload_mb": payload_mb,
+            "dns_tunnel_session_script_completed": session_script_completed,
+            "dns_tunnel_poll_attempts": poll_attempts,
         }
         if command_sample:
             completed_evidence["remote_command_sample"] = command_sample

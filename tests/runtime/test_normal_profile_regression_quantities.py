@@ -88,18 +88,18 @@ def test_normal_profile_dga_45_domains_one_dns_host() -> None:
     assert meta["planned_domains"] == 45
 
 
-def test_normal_profile_dns_tunnel_1mb_single_host_no_chunk_cap() -> None:
+def test_normal_profile_dns_tunnel_500kb_single_host_no_chunk_cap() -> None:
     params = build_operational_scenario_params(
         "normal",
         ["dns_tunnel"],
         target_net="10.10.10.0/24",
     )["dns_tunnel"]
-    assert params["payload_mb"] == 1.0
+    assert params["payload_mb"] == 0.5
     assert params["max_hosts"] == 1
     assert params.get("lock_max_hosts") is True
     assert "max_chunks" not in params
     plan = plan_dns_tunnel(_lab_targets(), params, dry_run=False)
-    expected_idx = plan_chunk_count(1.0, CHUNK_SIZE_DEFAULT)
+    expected_idx = plan_chunk_count(0.5, CHUNK_SIZE_DEFAULT)
     idx_count = sum(1 for q in plan["queries"] if q.get("query_role") == "idx_chunk")
     assert idx_count == expected_idx  # max_hosts=1
     assert plan.get("max_chunks") is None
@@ -109,8 +109,8 @@ def test_dns_tunnel_start_metadata_not_fixed_50() -> None:
     targets = _lab_targets()
     params = scenario_params_for_profile("dns_tunnel", "normal")
     meta = scenario_start_metadata("dns_tunnel", targets, params, webshell_mode=True)
-    idx_per_host = plan_chunk_count(1.0, CHUNK_SIZE_DEFAULT)
-    assert meta["payload_mb"] == 1.0
+    idx_per_host = plan_chunk_count(0.5, CHUNK_SIZE_DEFAULT)
+    assert meta["payload_mb"] == 0.5
     assert meta["planned_queries"] == idx_per_host + 2  # one host + session markers
     assert meta["planned_queries"] != 50
 

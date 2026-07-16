@@ -16,7 +16,7 @@ from dsp.runner import RunManager
 
 def test_resolve_volume_profile_demo():
     profile = resolve_volume_profile("demo")
-    assert profile["payload_mb"] == 1.0
+    assert profile["payload_mb"] == 0.5
     assert profile["max_hosts"] == 1
 
 

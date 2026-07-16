@@ -15,7 +15,7 @@ from dsp.protocols.base import DnsProtocolError
 from dsp.protocols.dns.volume_profiles import apply_volume_profile
 
 CHUNK_SIZE_DEFAULT = 30
-PAYLOAD_MB_DEFAULT = 1.0
+PAYLOAD_MB_DEFAULT = 0.5
 DNS_TUNNEL_SESSION_MAX_TIMEOUT_SEC = 900
 TUNNEL_DOMAIN_DEFAULT = "dns-tunnel.com"
 MOCK_PAYLOAD_FILENAME = "mock_exfil.dat"
@@ -77,17 +77,24 @@ def compute_dns_tunnel_session_timeout_sec(
     send_interval: float = SEND_INTERVAL_SEC,
     *,
     max_chunks: int | None = None,
-    margin_sec: float = 120.0,
+    margin_sec: float = 180.0,
+    empirical_qps: float = 65.0,
 ) -> int:
-    """Estimate webshell/bundle wall time for a full mock-file tunnel session."""
+    """Estimate wall time for a full mock-file tunnel session (detached webshell).
+
+    Uses the greater of nominal send_interval budget and empirical lab qps (~65–72)
+    so 1MB sessions are not cut near the end on slower hosts.
+    """
     idx_count = plan_chunk_count(payload_mb, chunk_size)
     if max_chunks is not None:
         idx_count = min(idx_count, int(max_chunks))
     total_queries = idx_count + 2
     send_budget = total_queries * send_interval
+    rate = max(1.0, float(empirical_qps))
+    empirical_budget = total_queries / rate
     return min(
         DNS_TUNNEL_SESSION_MAX_TIMEOUT_SEC,
-        int(send_budget + margin_sec),
+        int(max(send_budget, empirical_budget) + margin_sec),
     )
 
 

