@@ -2,13 +2,13 @@
 
 ## Official Source of Truth
 
-**`git@github.com:RickLee-kr/xdr-poc-script.git`** is the only writable source repository for DSP and PoC code.
+**`git@github.com:xdr-labs/xdr-poc-script.git`** is the only writable source repository for DSP and PoC code.
 
 All DSP feature work, releases, and documentation updates must land in this repository.
 
 ## Deprecated Repositories
 
-**`detection-scenario-platform`** (`git@github.com:RickLee-kr/detection-scenario-platform.git`) is deprecated.
+**`detection-scenario-platform`** (`git@github.com:xdr-labs/detection-scenario-platform.git`) is deprecated.
 
 Do not push new commits, open new feature branches, or treat it as the active development target.
 
@@ -25,7 +25,7 @@ Do not push new commits, open new feature branches, or treat it as the active de
 Before every commit, verify:
 
 1. **Working directory** — `pwd` must be the standalone DSP repo (for example `/home/aella/xdr-poc-script`), not `xdr-lab-appliance`.
-2. **Remote** — `git remote -v` must show `git@github.com:RickLee-kr/xdr-poc-script.git` as `origin`.
+2. **Remote** — `git remote -v` must show `git@github.com:xdr-labs/xdr-poc-script.git` as `origin`.
 3. **Scope** — changes are limited to the intended repository and branch; no accidental edits in deprecated or appliance paths.
 
 When in doubt, stop and confirm repository and remote before committing.

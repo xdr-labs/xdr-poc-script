@@ -5,13 +5,13 @@ One-command install/update for a new host. Clones or updates the repository, cre
 ## One-line install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xdr-labs/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Alternative:
 
 ```bash
-wget -O install-dsp.sh https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh
+wget -O install-dsp.sh https://raw.githubusercontent.com/xdr-labs/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh
 bash install-dsp.sh
 ```
 
@@ -33,7 +33,7 @@ Existing run artifacts under `~/.dsp/runs/` are never deleted.
 |----------|---------|
 | `DSP_REPO_DIR` | `/home/aella/xdr-poc-script` |
 | `DSP_RELEASE_BRANCH` | `release/v1.4.0-rc` |
-| `DSP_REPO_URL` | `https://github.com/RickLee-kr/xdr-poc-script.git` |
+| `DSP_REPO_URL` | `https://github.com/xdr-labs/xdr-poc-script.git` |
 | `DSP_NO_LAUNCH` | `0` (launch menu after install) |
 
 ## Custom install path
@@ -55,7 +55,7 @@ Useful for CI, smoke checks, or rerunning the installer safely.
 The script is **idempotent**. Run the same one-liner again to `git pull` and reinstall the package:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xdr-labs/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Or from an existing clone:

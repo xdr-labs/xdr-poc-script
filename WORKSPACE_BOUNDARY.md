@@ -24,7 +24,7 @@ optional wrapper scripts). It must not vendor editable DSP source.
 
 | Location | Status |
 |----------|--------|
-| `git@github.com:RickLee-kr/xdr-poc-script.git` | **Official SoT** |
+| `git@github.com:xdr-labs/xdr-poc-script.git` | **Official SoT** |
 | Branch `release/v1.4.0-rc` | Active release line |
 | Local path `/home/aella/xdr-poc-script` | Default operator checkout |
 | `detection-scenario-platform.git` | **Deprecated** — do not push |
@@ -61,7 +61,7 @@ under this repository root:
 Before every commit:
 
 1. **`pwd`** — must be `/home/aella/xdr-poc-script` (or your clone of it).
-2. **`git remote -v`** — `origin` must be `RickLee-kr/xdr-poc-script.git`.
+2. **`git remote -v`** — `origin` must be `xdr-labs/xdr-poc-script.git`.
 3. **Scope** — changes are DSP/PoC only; no appliance/bootstrap edits mixed in.
 
 ---
