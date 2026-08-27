@@ -13,7 +13,7 @@ DSP runs attack-simulation scenarios (port sweep, DNS tunnel, HTTP follow-up, SQ
 **One command** — clone, install, and open the operator menu:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xdr-labs/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Then in the menu:
@@ -52,7 +52,7 @@ DSP validates **traffic and event generation**, not vendor alert firing.
 Run this **once** on a new machine. It clones or updates the repo, creates `.venv`, installs DSP, and opens the menu.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xdr-labs/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Install only (no menu): `DSP_NO_LAUNCH=1 bash install-dsp.sh`

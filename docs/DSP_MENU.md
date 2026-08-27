@@ -7,7 +7,7 @@ SSH-friendly launcher for updating, configuring, and running DSP without memoriz
 Install or update DSP and launch this menu in one step:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RickLee-kr/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xdr-labs/xdr-poc-script/release/v1.4.0-rc/install-dsp.sh | bash
 ```
 
 Custom path, no menu launch:
