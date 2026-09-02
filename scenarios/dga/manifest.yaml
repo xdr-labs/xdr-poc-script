@@ -26,6 +26,11 @@ validation_profile:
         event: dga_domain_generated
         status: info
       aggregate: count
+    - name: dga_query_dispatched_count
+      event_filter:
+        event: dns_query_sent
+        status: sent
+      aggregate: count
     - name: dga_nxdomain_observed_count
       event_filter:
         event: dga_nxdomain_observed
@@ -39,9 +44,7 @@ validation_profile:
   success:
     dga_domain_generated_count:
       min: 1
-    dga_nxdomain_observed_count:
-      min: 1
-    dga_resolved_observed_count:
+    dga_query_dispatched_count:
       min: 1
   fail_fast:
     - SOT_EMPTY_AFTER_EXECUTE
@@ -51,6 +54,7 @@ report_profile:
   protocol: dga
   highlight_metrics:
     - dga_domain_generated_count
+    - dga_query_dispatched_count
     - dga_nxdomain_observed_count
     - dga_resolved_observed_count
   sample_events: 5

@@ -27,6 +27,11 @@ from dsp.execution.webshell.transport.base import WebshellTransport
 from dsp.execution.webshell.transport.real_http_transport import RealHttpTransport
 from dsp.execution.remote.bundle.models import REMOTE_EXECUTION_MODE_BUNDLE
 from dsp.execution.remote.bundle.runner import BundleScenarioRunner
+from dsp.execution.remote.command.models import (
+    COMMAND_SCENARIOS,
+    REMOTE_EXECUTION_MODE_COMMAND,
+)
+from dsp.execution.remote.command.runner import CommandScenarioRunner
 from dsp.execution.remote.exceptions import RemoteArtifactUploadError
 from dsp.execution.remote.models import ScenarioExecutionRequest
 from dsp.plugins.models import PluginRecord
@@ -182,6 +187,29 @@ class WebshellExecutionProvider(ExecutionProvider):
             target_net=context.target_net,
             dry_run=context.dry_run,
         )
+
+        # DNS Tunnel only: command-only (no DSP package upload on webshell host).
+        # All other scenarios keep baseline BundleScenarioRunner runtime behavior.
+        if record.id in COMMAND_SCENARIOS:
+            runner = CommandScenarioRunner()
+            result = runner.run(
+                request,
+                self,
+                targets=targets,
+                record=record,
+                ctx=ctx,
+            )
+            context.execution_metadata["remote_scenario_result"] = result.to_dict()
+            context.execution_metadata["remote_execution_id"] = result.remote_execution_id
+            context.execution_metadata["remote_execution_mode"] = REMOTE_EXECUTION_MODE_COMMAND
+            context.execution_metadata["scenario_skipped"] = bool(
+                request.execution_metadata.get("scenario_skipped")
+            )
+            context.execution_metadata["commands_dispatched"] = (
+                request.execution_metadata.get("commands_dispatched", 0)
+            )
+            return None
+
         runner = BundleScenarioRunner()
         try:
             result = runner.run(

@@ -16,7 +16,7 @@ from dsp.runner import RunManager
 
 def test_resolve_volume_profile_demo():
     profile = resolve_volume_profile("demo")
-    assert profile["max_chunks"] == 5
+    assert profile["payload_mb"] == 0.5
     assert profile["max_hosts"] == 1
 
 
@@ -29,8 +29,11 @@ def test_apply_volume_profile_explicit_overrides_profile():
 
 
 def test_apply_volume_profile_default_standard_for_dry_run():
+    from dsp.protocols.dns.volume_profiles import DRY_RUN_MAX_CHUNKS_DEFAULT
+
     params = apply_volume_profile({}, dry_run=True)
-    assert params["max_chunks"] == VOLUME_PROFILES["standard"]["max_chunks"]
+    assert params["max_chunks"] == DRY_RUN_MAX_CHUNKS_DEFAULT
+    assert params["payload_mb"] == VOLUME_PROFILES["standard"]["payload_mb"]
 
 
 def test_unknown_volume_profile_raises():
@@ -48,6 +51,6 @@ def test_dns_tunnel_dry_run_default_uses_standard_profile(tmp_runs_dir):
     assert exit_code == 0
     validation = json.loads((run_dir / "validation.json").read_text())
     metrics = validation["results"][0]["metrics"]
-    assert metrics["dns_tunnel_query_sent_count"] == 100
-    assert metrics["dns_tunnel_chunk_created_count"] == 100
+    assert metrics["dns_tunnel_query_sent_count"] == 102
+    assert metrics["dns_tunnel_chunk_created_count"] == 102
     assert (run_dir / "events.db").stat().st_size < 2 * 1024 * 1024

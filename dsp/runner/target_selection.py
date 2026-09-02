@@ -172,11 +172,52 @@ def scenario_start_metadata(
         meta["transport"] = "curl" if curl_available() else "urllib"
         meta["evidence"] = "http_followup_requests.jsonl"
     elif scenario_id == "dns_tunnel":
-        meta["planned_queries"] = int(params.get("max_queries", params.get("max_total", 50)))
+        from dsp.protocols.dns.tunnel import plan_chunk_count, plan_dns_tunnel
+        from dsp.protocols.dns.volume_profiles import apply_volume_profile
+
+        tuned = apply_volume_profile(params, dry_run=False)
+        plan = plan_dns_tunnel(targets, tuned, dry_run=False)
+        if plan.get("mode") == "skip":
+            meta["skip_reason"] = plan.get("reason", "no_alive_hosts")
+            meta["planned_queries"] = 0
+        else:
+            queries = list(plan.get("queries") or [])
+            meta["planned_queries"] = len(queries)
+            meta["planned_data_queries"] = sum(
+                1 for q in queries if q.get("query_role", "idx_chunk") == "idx_chunk"
+            )
+            meta["payload_mb"] = plan.get("payload_mb")
+            meta["payload_bytes"] = int(float(plan.get("payload_mb") or 0) * 1024 * 1024)
+            # Keep plan_chunk_count available for operators inspecting STARTED lines.
+            meta["idx_chunks"] = plan_chunk_count(
+                float(plan.get("payload_mb") or 0.5),
+                int(plan.get("chunk_size") or 30),
+            )
     elif scenario_id == "dga":
-        meta["planned_domains"] = int(params.get("max_domains", params.get("max_total", 15)))
+        phase1 = int(params.get("phase1_count", params.get("max_domains", 10)))
+        phase2 = int(params.get("phase2_count", 5))
+        meta["planned_domains"] = phase1 + phase2
+        meta["phase1_count"] = phase1
+        meta["phase2_count"] = phase2
     elif scenario_id in ("ssh_failure", "ldap_enumeration", "kerberos_failure", "smb_login_failure"):
-        meta["planned_attempts"] = int(params.get("max_total", 0)) or None
+        if scenario_id == "ssh_failure":
+            meta["planned_attempts"] = int(
+                params.get("max_total")
+                or (
+                    int(params.get("max_hosts", 1))
+                    * int(params.get("max_per_host", params.get("attempts_per_host", 0)))
+                )
+                or 0
+            ) or None
+        else:
+            meta["planned_attempts"] = int(
+                params.get("max_total")
+                or (
+                    int(params.get("max_hosts", 1))
+                    * int(params.get("attempts_per_host", params.get("max_queries_per_host", 0)))
+                )
+                or 0
+            ) or None
     elif scenario_id == "sql_injection":
         from dsp.engine.host_selection import (
             SKIP_REASON_HTTP_TARGETS_NOT_FOUND,

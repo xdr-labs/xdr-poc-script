@@ -30,14 +30,17 @@ def test_port_sweep_counters() -> None:
     ]
 
 
-def test_dga_queries_sent_sums_phases() -> None:
+def test_dga_generated_dispatched_observed() -> None:
     lines = traffic_lines_for_scenario(
         "dga",
         {
             "dga_domain_generated_count": 5,
+            "dga_query_dispatched_count": 5,
             "dga_nxdomain_observed_count": 3,
             "dga_resolved_observed_count": 2,
         },
     )
     assert ("domains_generated", 5) in lines
-    assert ("queries_sent", 5) in lines
+    assert ("queries_dispatched", 5) in lines
+    assert ("nxdomain_observed", 3) in lines
+    assert ("resolved_observed", 2) in lines

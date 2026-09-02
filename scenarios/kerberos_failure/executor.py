@@ -1,10 +1,13 @@
-"""Kerberos failure executor — planned auth-failure attempts."""
+"""Kerberos failure executor — discovery kerberos_hosts only."""
 
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
+from dsp.engine.host_selection import select_hosts_for_capability
 from dsp.engine.scenario_engine import RunContext, TargetSet
+from dsp.event_store import Event
 from dsp.runner.activity_reporter import ActivityReporter
 from dsp.protocols.kerberos import (
     ATTEMPTS_PER_HOST_DEFAULT,
@@ -27,12 +30,13 @@ def select_kerberos_hosts(
     *,
     max_hosts: int = MAX_HOSTS_DEFAULT,
 ) -> list[str]:
-    """Select up to max_hosts targets without discovery."""
-    if config.get("hosts"):
-        return [str(h) for h in config["hosts"]][:max_hosts]
-    if targets.hosts:
-        return list(targets.hosts)[:max_hosts]
-    return ["10.10.10.30"]
+    """Select Kerberos targets from discovery kerberos_hosts (TCP/88) only."""
+    return select_hosts_for_capability(
+        targets,
+        config,
+        capability="kerberos_hosts",
+        max_hosts=max_hosts,
+    )
 
 
 def run(
@@ -57,6 +61,30 @@ def run(
     )
 
     hosts = select_kerberos_hosts(targets, params, max_hosts=max_hosts)
+    if not hosts:
+        reason = "No Kerberos service discovered"
+        ActivityReporter(ctx, scenario_id).emit_skipped(reason=reason)
+        skip_evidence = {
+            "reason": reason,
+            "skipped_no_open_service": True,
+            "attempts_planned": 0,
+            "discovery_basis": "kerberos_hosts",
+        }
+        for event_name in ("kerberos_failure_skipped", "scenario_skipped"):
+            ctx.event_store.append(
+                Event(
+                    run_id=ctx.run_id,
+                    scenario_id=scenario_id,
+                    timestamp=datetime.now(timezone.utc),
+                    stage="executor",
+                    event=event_name,
+                    status="info",
+                    source=source,
+                    evidence=dict(skip_evidence),
+                )
+            )
+        return
+
     plans = plan_kerberos_attempts(
         hosts,
         max_hosts=max_hosts,
@@ -69,6 +97,7 @@ def run(
     sample_usernames: list[str] = []
     attempt_count = 0
     failure_count = 0
+    timeout_count = 0
     t0 = time.monotonic()
     activity = ActivityReporter(ctx, scenario_id, total=len(plans))
 
@@ -86,6 +115,8 @@ def run(
                 "realm": realm,
                 "mode": mode,
                 "safe_mode": safe_mode,
+                "discovery_basis": "kerberos_hosts",
+                "target_selection": "discovery_kerberos_hosts",
             },
         )
     )
@@ -147,6 +178,10 @@ def run(
 
         if result.outcome == "auth_failed":
             failure_count += 1
+        if result.outcome == "timeout" or str(
+            (result.evidence or {}).get("note", "")
+        ) == "as_req_sent_no_kdc_response":
+            timeout_count += 1
 
         activity.record(
             action="auth_attempt",
@@ -170,9 +205,12 @@ def run(
                 "realm": realm,
                 "attempt_count": attempt_count,
                 "failure_count": failure_count,
+                "timeout_count": timeout_count,
                 "duration_sec": elapsed,
                 "sample_usernames": sample_usernames,
                 "safe_mode": safe_mode,
+                "discovery_basis": "kerberos_hosts",
+                "target_selection": "discovery_kerberos_hosts",
             },
         )
     )

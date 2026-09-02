@@ -6,26 +6,29 @@ from typing import Any
 
 # Named profiles for operator-controlled execution volume.
 # Explicit scenario_params keys always override profile values.
+# Align with operational traffic profiles: normal·high 0.5 MB (500 KiB) per target.
 VOLUME_PROFILES: dict[str, dict[str, Any]] = {
     "demo": {
-        "payload_mb": 0.0001,
-        "max_chunks": 5,
+        "payload_mb": 0.5,
         "max_hosts": 1,
     },
     "standard": {
-        "payload_mb": 0.01,
-        "max_chunks": 100,
+        "payload_mb": 0.5,
+        "chunk_size": 30,
         "max_hosts": 1,
     },
     "stress": {
-        "payload_mb": 2.0,
+        # Same per-target payload as standard; host fan-out comes from operational high.
+        "payload_mb": 0.5,
         "chunk_size": 30,
-        "max_hosts": 2,
+        "max_hosts": 1,
     },
 }
 
 DEFAULT_DRY_RUN_PROFILE = "standard"
 DEFAULT_LIVE_PROFILE = "standard"
+
+DRY_RUN_MAX_CHUNKS_DEFAULT = 100
 
 
 def resolve_volume_profile(name: str) -> dict[str, Any]:
@@ -55,5 +58,8 @@ def apply_volume_profile(
     profile_name = merged.pop("volume_profile", None)
     if profile_name:
         merged = {**resolve_volume_profile(str(profile_name)), **merged}
+
+    if dry_run and "max_chunks" not in merged:
+        merged["max_chunks"] = DRY_RUN_MAX_CHUNKS_DEFAULT
 
     return merged

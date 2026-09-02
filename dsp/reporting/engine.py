@@ -24,6 +24,8 @@ class Report:
     event_samples: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     run_metadata: dict[str, Any] = field(default_factory=dict)
     summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
+    discovery: dict[str, Any] = field(default_factory=dict)
+    traffic_summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -36,6 +38,8 @@ class Report:
             "event_samples": self.event_samples,
             "run_metadata": self.run_metadata,
             "summaries": self.summaries,
+            "discovery": self.discovery,
+            "traffic_summary": self.traffic_summary,
         }
 
 
@@ -52,6 +56,8 @@ class ReportingEngine:
         results: list[ValidationResult],
         run: Run | None = None,
         summaries: dict[str, dict[str, Any]] | None = None,
+        discovery: dict[str, Any] | None = None,
+        traffic_summary: dict[str, Any] | None = None,
     ) -> Report:
         event_samples: dict[str, list[dict[str, Any]]] = {}
         for result in results:
@@ -80,6 +86,8 @@ class ReportingEngine:
             ]
 
         run_metadata = run.to_dict() if run else {"run_id": run_id}
+        traffic = dict(traffic_summary or {})
+        discovery_payload = dict(discovery or traffic.get("discovery") or {})
 
         return Report(
             run_id=run_id,
@@ -87,6 +95,8 @@ class ReportingEngine:
             event_samples=event_samples,
             run_metadata=run_metadata,
             summaries=summaries or {},
+            discovery=discovery_payload,
+            traffic_summary=traffic,
         )
 
     def write_report_md(
@@ -108,11 +118,22 @@ class ReportingEngine:
             json.dumps(report.run_metadata, indent=2),
             "```",
             "",
+        ]
+
+        from dsp.runtime.discovery_report import format_discovery_report_lines
+
+        discovery_lines = format_discovery_report_lines(report.discovery or {})
+        if discovery_lines:
+            lines.extend(discovery_lines)
+
+        lines.extend(
+            [
             "## Traffic Validation (Primary Table)",
             "",
             "| Scenario | Decision | Reason | Metrics |",
             "|----------|----------|--------|---------|",
         ]
+        )
 
         for result in report.traffic_validation:
             metrics_str = json.dumps(result.metrics)

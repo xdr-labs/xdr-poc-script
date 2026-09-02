@@ -52,6 +52,7 @@ def run(
     nx_observed = 0
     resolved_observed = 0
     domains_generated = 0
+    queries_dispatched = 0
     t0 = time.monotonic()
     total_domains = phase1_count + phase2_count
     activity = ActivityReporter(ctx, scenario_id, total=total_domains)
@@ -66,6 +67,7 @@ def run(
                 "effective_tld": effective_tld,
                 "phase1_count": phase1_count,
                 "phase2_count": phase2_count,
+                "planned_domains": total_domains,
                 "mode": mode,
             },
         )
@@ -116,6 +118,8 @@ def run(
                 "outcome": result.outcome,
                 "query_id": result.query_id,
             }
+            # dns_query_sent is always emitted by build_dns_events — count as dispatched.
+            queries_dispatched += 1
             if result.outcome == "nxdomain":
                 ctx.event_store.append(
                     build_dga_nxdomain_observed_event(
@@ -162,8 +166,12 @@ def run(
             evidence={
                 "effective_tld": effective_tld,
                 "domains_generated": domains_generated,
+                "generated_domains": domains_generated,
+                "dispatched_queries": queries_dispatched,
                 "nxdomain_observed": nx_observed,
                 "resolved_observed": resolved_observed,
+                "observed_nxdomain": nx_observed,
+                "observed_resolved": resolved_observed,
                 "duration_sec": elapsed,
                 "sample_domains": sample_domains,
                 "resolver": resolver,

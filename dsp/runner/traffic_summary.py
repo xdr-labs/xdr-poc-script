@@ -7,7 +7,12 @@ from typing import Any
 # (display_label, metric_key) per scenario_id
 _SCENARIO_TRAFFIC_LINES: dict[str, tuple[tuple[str, str], ...]] = {
     "dns_tunnel": (("queries_sent", "dns_tunnel_query_sent_count"),),
-    "dga": (("domains_generated", "dga_domain_generated_count"),),
+    "dga": (
+        ("domains_generated", "dga_domain_generated_count"),
+        ("queries_dispatched", "dga_query_dispatched_count"),
+        ("nxdomain_observed", "dga_nxdomain_observed_count"),
+        ("resolved_observed", "dga_resolved_observed_count"),
+    ),
     "http_followup": (
         ("requests_sent", "http_request_sent_count"),
         ("responses_received", "http_response_received_count"),
@@ -39,11 +44,6 @@ def traffic_lines_for_scenario(
         if key not in metrics:
             continue
         lines.append((label, metrics[key]))
-    if scenario_id == "dga":
-        nx = int(metrics.get("dga_nxdomain_observed_count", 0))
-        resolved = int(metrics.get("dga_resolved_observed_count", 0))
-        if nx or resolved:
-            lines.append(("queries_sent", nx + resolved))
     return lines
 
 

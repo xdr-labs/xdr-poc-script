@@ -28,6 +28,7 @@ from dsp.runtime.scenario_plan import apply_webshell_initial_compromise_plan
 from dsp.evidence import EvidenceExportRequest, EvidenceExporter
 from dsp.execution import ExecutionContext, create_execution_provider
 from dsp.execution.remote import RemoteEventCollectionRequest, RemoteEventCollector
+from dsp.execution.remote.command.models import REMOTE_EXECUTION_MODE_COMMAND
 from dsp.execution.remote.paths import resolve_remote_bundle_path
 from dsp.execution.webshell_provider import WebshellExecutionProvider
 from dsp.event_store import EventQuery, EventStore, Run, RunStatus, ValidationDecision
@@ -38,6 +39,7 @@ from dsp.manual_verification import (
 from dsp.plugins import PluginLoader, PluginStatus
 from dsp.reporting import ReportingEngine
 from dsp.runner.progress_emitter import ProgressEmitter
+from dsp.validation.skip_reasons import extract_skip_reason
 from dsp.runner.target_selection import (
     resolve_selected_targets_by_protocol,
     scenario_start_metadata,
@@ -58,6 +60,12 @@ def _latest_skip_evidence(
         f"{scenario_id}_skipped",
         "http_followup_skipped",
         "sql_injection_skipped",
+        "smb_scenario_skipped",
+        "ssh_failure_skipped",
+        "kerberos_failure_skipped",
+        "ldap_enumeration_skipped",
+        "dns_tunnel_skipped",
+        "dga_skipped",
         "scenario_skipped",
     )
     for event in reversed(store.list_events(run_id)):
@@ -73,6 +81,12 @@ def _scenario_executor_skipped(store: EventStore, run_id: str, scenario_id: str)
         f"{scenario_id}_skipped",
         "http_followup_skipped",
         "sql_injection_skipped",
+        "smb_scenario_skipped",
+        "ssh_failure_skipped",
+        "kerberos_failure_skipped",
+        "ldap_enumeration_skipped",
+        "dns_tunnel_skipped",
+        "dga_skipped",
         "scenario_skipped",
     )
     for event_name in skip_names:
@@ -420,6 +434,8 @@ class RunManager:
                     "probed_hosts": targets.discovery_meta.get("probed_hosts", 0),
                     "alive_hosts": targets.discovery_meta.get("alive_hosts", []),
                     "service_hosts": targets.discovery_meta.get("service_hosts", {}),
+                    "service_endpoints": targets.discovery_meta.get("service_endpoints", {}),
+                    "open_endpoints": targets.discovery_meta.get("open_endpoints", 0),
                 },
             )
             selected = resolve_selected_targets_by_protocol(
@@ -494,12 +510,13 @@ class RunManager:
                 if emitter is not None:
                     if _scenario_executor_skipped(store, run_id, sid):
                         skip_evidence = _latest_skip_evidence(store, run_id, sid)
+                        skip_reason = extract_skip_reason(skip_evidence, scenario_id=sid)
                         emitter.on_scenario_completed()
                         emitter.emit(
                             "scenario_skipped",
                             {
                                 "scenario_id": sid,
-                                "reason": skip_evidence.get("reason", "scenario_skipped"),
+                                "reason": skip_reason,
                                 "evidence": skip_evidence,
                             },
                         )
@@ -523,6 +540,13 @@ class RunManager:
 
                 if execution_provider == "webshell" and collector is not None:
                     if exec_ctx.execution_metadata.get("delivery_fallback_local"):
+                        continue
+                    # Command-only scenarios (e.g. dns_tunnel) already append to the
+                    # local Event Store; there is no remote bundle events.jsonl.
+                    if (
+                        exec_ctx.execution_metadata.get("remote_execution_mode")
+                        == REMOTE_EXECUTION_MODE_COMMAND
+                    ):
                         continue
                     assert isinstance(provider, WebshellExecutionProvider)
                     remote_execution_id = exec_ctx.execution_metadata.get(
@@ -568,16 +592,6 @@ class RunManager:
         run.status = RunStatus.COMPLETED
         run.ended_at = datetime.now(timezone.utc)
 
-        reporter = ReportingEngine(store, self.registry)
-        report = reporter.generate(run_id, results, run=run, summaries=summaries)
-        if detection_confirmation is not None:
-            report.detection_confirmation = detection_confirmation
-        reporter.write_report_md(run_dir / "report.md", report)
-        reporter.write_report_json(run_dir / "report.json", report)
-
-        store.export_jsonl(run_dir / "events.jsonl")
-        event_count = store.count(EventQuery(run_id=run_id))
-
         from dsp.runtime.traffic_summary import build_traffic_summary
 
         summary_profile = traffic_profile or operational_profile or "normal"
@@ -592,6 +606,23 @@ class RunManager:
             json.dumps(traffic_summary, indent=2),
             encoding="utf-8",
         )
+
+        reporter = ReportingEngine(store, self.registry)
+        report = reporter.generate(
+            run_id,
+            results,
+            run=run,
+            summaries=summaries,
+            discovery=traffic_summary.get("discovery"),
+            traffic_summary=traffic_summary,
+        )
+        if detection_confirmation is not None:
+            report.detection_confirmation = detection_confirmation
+        reporter.write_report_md(run_dir / "report.md", report)
+        reporter.write_report_json(run_dir / "report.json", report)
+
+        store.export_jsonl(run_dir / "events.jsonl")
+        event_count = store.count(EventQuery(run_id=run_id))
 
         http_completed = next(
             (

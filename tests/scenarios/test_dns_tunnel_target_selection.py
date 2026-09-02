@@ -51,13 +51,17 @@ def test_local_and_webshell_dns_tunnel_plans_match() -> None:
         "max_chunks": 3,
         "domain": "dns-tunnel.com",
         "max_hosts": 2,
+        "plan_seed": 11,
     }
     plan = _plan_dns_tunnel(targets, params, dry_run=False)
     assert plan["type"] == "dns_tunnel"
-    assert len(plan["queries"]) == 6
+    # 2 hosts × (strt + 3 idx + end)
+    assert len(plan["queries"]) == 10
     hosts = {item["target"] for item in plan["queries"]}
     assert hosts == {"10.10.10.97", "10.10.10.98"}
-    for item in plan["queries"]:
+    idx = [q for q in plan["queries"] if q.get("query_role") == "idx_chunk"]
+    assert len(idx) == 6
+    for item in idx:
         assert item["fqdn"].startswith("idx-")
         assert item["fqdn"].endswith(".dns-tunnel.com")
 
@@ -98,7 +102,8 @@ def test_live_executor_sends_udp_for_every_planned_query(tmp_path) -> None:
     with patch("dsp.protocols.dns.client.socket.socket", return_value=mock_sock):
         module.run(ctx, targets, params)
 
-    assert len(sent_packets) == 3
+    # strt + 3 idx + end
+    assert len(sent_packets) == 5
     for packet, (host, port) in sent_packets:
         assert host == "10.10.10.97"
         assert port == 53
@@ -110,11 +115,11 @@ def test_live_executor_sends_udp_for_every_planned_query(tmp_path) -> None:
     dns_sent = store.count(
         EventQuery(run_id="tunnel_send_run", scenario_id="dns_tunnel", event="dns_query_sent")
     )
-    assert query_sent == 3
-    assert dns_sent == 3
+    assert query_sent == 5
+    assert dns_sent == 5
 
 
-def test_no_response_does_not_suppress_tunnel_query_sent(tmp_path) -> None:
+def test_sendto_error_does_not_count_as_sent(tmp_path) -> None:
     mock_sock = MagicMock()
     mock_sock.sendto.side_effect = OSError("network unreachable")
 
@@ -144,10 +149,10 @@ def test_no_response_does_not_suppress_tunnel_query_sent(tmp_path) -> None:
 
     assert store.count(
         EventQuery(run_id="tunnel_err_run", scenario_id="dns_tunnel", event="dns_tunnel_query_sent")
-    ) == 2
+    ) == 0
     assert store.count(
         EventQuery(run_id="tunnel_err_run", scenario_id="dns_tunnel", event="dns_query_sent")
-    ) == 2
+    ) == 0
 
 
 def test_remote_runner_encodes_full_tunnel_fqdn() -> None:

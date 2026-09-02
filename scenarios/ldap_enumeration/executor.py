@@ -1,10 +1,13 @@
-"""LDAP enumeration executor — planned safe bind/search attempts."""
+"""LDAP enumeration executor — discovery ldap_hosts only."""
 
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
+from dsp.engine.host_selection import select_hosts_for_capability
 from dsp.engine.scenario_engine import RunContext, TargetSet
+from dsp.event_store import Event
 from dsp.runner.activity_reporter import ActivityReporter
 from dsp.protocols.ldap import (
     DEFAULT_SAFE_FILTERS,
@@ -26,12 +29,13 @@ def select_ldap_hosts(
     *,
     max_hosts: int = MAX_HOSTS_DEFAULT,
 ) -> list[str]:
-    """Select up to max_hosts targets without discovery."""
-    if config.get("hosts"):
-        return [str(h) for h in config["hosts"]][:max_hosts]
-    if targets.hosts:
-        return list(targets.hosts)[:max_hosts]
-    return ["10.10.10.30"]
+    """Select LDAP targets from discovery ldap_hosts (TCP/389,636) only."""
+    return select_hosts_for_capability(
+        targets,
+        config,
+        capability="ldap_hosts",
+        max_hosts=max_hosts,
+    )
 
 
 def _resolve_ports(config: dict) -> tuple[int, ...]:
@@ -61,6 +65,29 @@ def run(
     )
 
     hosts = select_ldap_hosts(targets, params, max_hosts=max_hosts)
+    if not hosts:
+        reason = "No LDAP service discovered"
+        ActivityReporter(ctx, scenario_id).emit_skipped(reason=reason)
+        skip_evidence = {
+            "reason": reason,
+            "skipped_no_open_service": True,
+            "discovery_basis": "ldap_hosts",
+        }
+        for event_name in ("ldap_enumeration_skipped", "scenario_skipped"):
+            ctx.event_store.append(
+                Event(
+                    run_id=ctx.run_id,
+                    scenario_id=scenario_id,
+                    timestamp=datetime.now(timezone.utc),
+                    stage="executor",
+                    event=event_name,
+                    status="info",
+                    source=source,
+                    evidence=dict(skip_evidence),
+                )
+            )
+        return
+
     ports = _resolve_ports(params)
     plans = plan_ldap_enumeration(
         hosts,
@@ -90,6 +117,7 @@ def run(
                 "max_queries_per_host": max_queries,
                 "mode": mode,
                 "safe_mode": safe_mode,
+                "discovery_basis": "ldap_hosts",
             },
         )
     )

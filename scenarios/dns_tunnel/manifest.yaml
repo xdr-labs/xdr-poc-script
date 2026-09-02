@@ -3,8 +3,9 @@ id: dns_tunnel
 name: DNS Tunnel — idx-pattern UDP/53
 version: "1.0.0"
 description: >
-  Generates idx-{seq:06d}-{base32} DNS tunnel FQDNs from a 2MB dummy payload,
-  transmits UDP/53 queries, and records tunnel events in Event Store.
+  Generates idx-{seq:04d}-{base32} DNS tunnel FQDNs from a ~0.5MB mock payload,
+  transmits UDP/53 queries at 0.01s intervals, and records tunnel events in
+  Event Store. Session markers: strt-{base32(filename)} and end-0.
   Response not required for validation.
 
 category: dns
@@ -31,13 +32,29 @@ validation_profile:
         event: dns_tunnel_query_sent
         status: sent
       aggregate: count
+    - name: dns_tunnel_idx_pattern_count
+      event_filter:
+        event: dns_tunnel_query_sent
+        status: sent
+      aggregate: count
   success:
     dns_tunnel_query_sent_count:
       min: 1
+      min_ratio_of: planned_queries
+      min_ratio: 0.95
     dns_tunnel_chunk_created_count:
       min: 1
+    dispatched_queries:
+      min: 1
+      min_ratio_of: planned_queries
+      min_ratio: 0.95
   fail_fast:
     - SOT_EMPTY_AFTER_EXECUTE
+    - DNS_TUNNEL_EVIDENCE_INCOMPLETE
+    - DNS_TUNNEL_INVALID_FQDN_PATTERN
+    - DNS_TUNNEL_INVALID_PROTOCOL
+    - DNS_TUNNEL_INVALID_PORT
+    - DNS_TUNNEL_DISPATCH_SHORTFALL
 
 report_profile:
   profile_version: "1.0.0"
@@ -51,7 +68,7 @@ report_profile:
 
 defaults:
   volume_profile: standard
-  payload_mb: 2.0
+  payload_mb: 0.5
   chunk_size: 30
   domain: "dns-tunnel.com"
   max_hosts: 2

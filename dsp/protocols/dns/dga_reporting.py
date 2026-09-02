@@ -36,6 +36,7 @@ def build_dga_report_section(
     ]
     trace_map = {
         "dga_domain_generated_count": "event=dga_domain_generated, status=info",
+        "dga_query_dispatched_count": "event=dns_query_sent, status=sent",
         "dga_nxdomain_observed_count": "event=dga_nxdomain_observed, status=nxdomain",
         "dga_resolved_observed_count": "event=dga_resolved_observed, status=response",
     }
@@ -46,14 +47,21 @@ def build_dga_report_section(
 
     effective_tld = summary.get("effective_tld", "xdr.ooo")
     sample_domains = summary.get("sample_domains", [])
-    domains_generated = summary.get("domains_generated")
+    domains_generated = summary.get("domains_generated") or summary.get("generated_domains")
+    dispatched = summary.get("dispatched_queries")
 
     lines.extend(["", "**DGA Summary**", ""])
     lines.append(f"- **Effective TLD:** {effective_tld}")
     if domains_generated is not None:
         lines.append(f"- **Generated domains:** {domains_generated}")
-    lines.append(f"- **NXDOMAIN observed:** {result.metrics.get('dga_nxdomain_observed_count', 0)}")
-    lines.append(f"- **Resolved observed:** {result.metrics.get('dga_resolved_observed_count', 0)}")
+    if dispatched is not None:
+        lines.append(f"- **Dispatched queries:** {dispatched}")
+    lines.append(
+        f"- **NXDOMAIN observed:** {result.metrics.get('dga_nxdomain_observed_count', summary.get('observed_nxdomain', 0))}"
+    )
+    lines.append(
+        f"- **Resolved observed:** {result.metrics.get('dga_resolved_observed_count', summary.get('observed_resolved', 0))}"
+    )
     if sample_domains:
         lines.append(f"- **Sample domains:** {', '.join(sample_domains[:5])}")
 

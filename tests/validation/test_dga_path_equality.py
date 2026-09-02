@@ -11,6 +11,7 @@ from dsp.protocols.dns.dga_events import (
     build_dga_nxdomain_observed_event,
     build_dga_resolved_observed_event,
 )
+from dsp.protocols.dns.events import DNS_QUERY_SENT
 from dsp.reporting import ReportingEngine
 from dsp.validation import ValidationEngine
 
@@ -50,6 +51,20 @@ def test_dga_path_equality():
                 evidence={"phase": phase},
             )
         )
+        store.append(
+            Event(
+                run_id=run_id,
+                scenario_id="dga",
+                timestamp=datetime.now(timezone.utc),
+                stage="executor",
+                event=DNS_QUERY_SENT,
+                status="sent",
+                target="10.10.10.20",
+                artifact=fqdn,
+                source="dry_run",
+                evidence={"phase": phase},
+            )
+        )
     store.append(
         build_dga_nxdomain_observed_event(
             run_id=run_id,
@@ -82,6 +97,7 @@ def test_dga_path_equality():
 
     assert result.decision == ValidationDecision.SUCCESS
     assert result.metrics["dga_domain_generated_count"] == 2
+    assert result.metrics["dga_query_dispatched_count"] == 2
     assert result.metrics["dga_nxdomain_observed_count"] == 1
     assert result.metrics["dga_resolved_observed_count"] == 1
     assert table[0]["metrics"] == result.metrics

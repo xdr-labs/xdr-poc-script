@@ -53,12 +53,37 @@ class OperationalConsole:
             hosts = data.get("hosts_found", 0)
             probed = data.get("probed_hosts", 0)
             alive = data.get("alive_hosts") or []
+            service_hosts = data.get("service_hosts") or {}
+            service_endpoints = data.get("service_endpoints") or {}
             self._write("Discovery Completed")
             if probed:
                 self._write(f"Probed Hosts: {probed}")
             self._write(f"Hosts Found: {hosts}")
             if alive:
                 self._write(f"Alive: {', '.join(str(h) for h in alive[:8])}{'...' if len(alive) > 8 else ''}")
+            from dsp.runtime.discovery_report import (
+                format_discovery_report_lines,
+                normalize_discovery_meta,
+            )
+
+            discovery = normalize_discovery_meta(
+                {
+                    "enabled": True,
+                    "probed_hosts": probed,
+                    "alive_hosts": alive,
+                    "service_hosts": service_hosts,
+                    "service_endpoints": service_endpoints,
+                    "open_endpoints": data.get("open_endpoints", 0),
+                }
+            )
+            # Console-friendly compact view (markdown headings stripped).
+            for line in format_discovery_report_lines(discovery):
+                if line.startswith("#"):
+                    continue
+                if line.startswith("- **"):
+                    continue
+                if line.strip():
+                    self._write(line)
             self._write("")
         elif phase == "targets_selected":
             self._emit_selected_targets(data)

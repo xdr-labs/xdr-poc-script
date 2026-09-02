@@ -55,7 +55,7 @@ def run(
                 status="info",
                 source=source,
                 evidence={
-                    "reason": "skipped_no_open_service: no ssh_hosts from discovery",
+                    "reason": "No SSH service discovered",
                     "skipped_no_open_service": True,
                     "auth_attempts_planned": 0,
                     "auth_attempts": 0,

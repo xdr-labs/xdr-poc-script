@@ -20,27 +20,26 @@ _SCENARIO_PROFILE_PARAMS: dict[str, dict[str, dict[str, Any]]] = {
         "normal": {"action_count": 10},
         "high": {"action_count": 25},
     },
+    # DNS Tunnel operational volumes follow RC 0.5 MB file-exfil model.
+    # Do not reintroduce baseline max_chunks caps (e.g. normal=50).
     "dns_tunnel": {
         "low": {
             "volume_profile": "demo",
-            "payload_mb": 0.0001,
-            "max_chunks": 5,
+            "payload_mb": 0.5,
             "max_hosts": 1,
             "timeout": 0.1,
         },
         "normal": {
             "volume_profile": "standard",
-            "payload_mb": 0.01,
-            "max_chunks": 50,
+            "payload_mb": 0.5,
             "max_hosts": 1,
+            "lock_max_hosts": True,
             "timeout": 0.05,
         },
         "high": {
-            "volume_profile": "stress",
+            "volume_profile": "standard",
             "payload_mb": 0.5,
-            "max_chunks": 150,
-            "max_hosts": 2,
-            "chunk_size": 30,
+            "max_hosts": 1,
             "max_duration_sec": 120,
             "timeout": 0.05,
         },

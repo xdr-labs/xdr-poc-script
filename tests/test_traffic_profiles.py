@@ -37,12 +37,17 @@ def test_parse_traffic_profile_accepts_legacy_aliases() -> None:
     assert parse_traffic_profile("burst") == "high"
 
 
-def test_dns_tunnel_profile_mapping_increases_with_intensity() -> None:
+def test_dns_tunnel_profile_mapping_uses_full_payload() -> None:
     low = scenario_params_for_profile("dns_tunnel", "low")
     normal = scenario_params_for_profile("dns_tunnel", "normal")
     high = scenario_params_for_profile("dns_tunnel", "high")
 
-    assert low["max_chunks"] < normal["max_chunks"] < high["max_chunks"]
+    assert low["payload_mb"] == 0.5
+    assert normal["payload_mb"] == 0.5
+    assert high["payload_mb"] == 0.5
+    assert "max_chunks" not in low
+    assert "max_chunks" not in normal
+    assert "max_chunks" not in high
     assert low["traffic_profile"] == "low"
     assert high["traffic_profile"] == "high"
 

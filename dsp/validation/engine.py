@@ -10,6 +10,7 @@ from typing import Any
 from dsp.event_store import EventStore, EventQuery, MetricDef, ValidationDecision, ValidationResult
 from dsp.plugins.models import Manifest, PluginRecord
 from dsp.plugins.registry import PluginRegistry
+from dsp.validation.skip_reasons import extract_skip_reason
 
 _SCENARIO_SKIP_EVENTS = frozenset({
     "scenario_skipped",
@@ -17,6 +18,10 @@ _SCENARIO_SKIP_EVENTS = frozenset({
     "http_followup_skipped",
     "sql_injection_skipped",
     "ssh_failure_skipped",
+    "kerberos_failure_skipped",
+    "ldap_enumeration_skipped",
+    "dns_tunnel_skipped",
+    "dga_skipped",
 })
 
 
@@ -69,14 +74,15 @@ class ValidationEngine:
         profile_version = str(vp.get("profile_version", "1.0.0"))
         metric_defs = _parse_metrics(vp.get("metrics", []))
 
-        skipped = self._is_scenario_skipped(run_id, scenario_id)
-        if skipped:
+        skip_evidence = self._latest_skip_evidence(run_id, scenario_id)
+        if skip_evidence is not None:
+            reason = extract_skip_reason(skip_evidence, scenario_id=scenario_id)
             return ValidationResult(
                 run_id=run_id,
                 scenario_id=scenario_id,
                 decision=ValidationDecision.SKIPPED,
-                reason="scenario_skipped",
-                metrics={},
+                reason=reason,
+                metrics={"skip_reason": reason},
                 validated_at=datetime.now(timezone.utc),
                 validation_profile_version=profile_version,
             )
@@ -95,6 +101,10 @@ class ValidationEngine:
             )
 
         metrics = self.store.aggregate(run_id, scenario_id, metric_defs)
+        if scenario_id == "dns_tunnel":
+            metrics = _enrich_dns_tunnel_metrics(self.store, run_id, scenario_id, metrics)
+        elif scenario_id == "dga":
+            metrics = _enrich_dga_metrics(self.store, run_id, scenario_id, metrics)
         decision, reason = self._apply_thresholds(metrics, vp)
 
         return ValidationResult(
@@ -116,14 +126,16 @@ class ValidationEngine:
             > 0
         )
 
+    def _latest_skip_evidence(self, run_id: str, scenario_id: str) -> dict[str, Any] | None:
+        skip_names = set(_SCENARIO_SKIP_EVENTS)
+        skip_names.add(f"{scenario_id}_skipped")
+        for event in reversed(self.store.list_events(run_id, scenario_id)):
+            if event.event in skip_names:
+                return dict(event.evidence or {})
+        return None
+
     def _is_scenario_skipped(self, run_id: str, scenario_id: str) -> bool:
-        for event_name in _SCENARIO_SKIP_EVENTS:
-            if self._has_event(run_id, scenario_id, event_name):
-                return True
-        for event_name in (f"{scenario_id}_skipped",):
-            if self._has_event(run_id, scenario_id, event_name):
-                return True
-        return False
+        return self._latest_skip_evidence(run_id, scenario_id) is not None
 
     def _evaluate_fail_fast(
         self,
@@ -151,6 +163,18 @@ class ValidationEngine:
             for name, value in self.store.aggregate(run_id, scenario_id, metric_defs).items():
                 if isinstance(value, (int, float)) and value < 0:
                     codes.append("COUNTER_IMPOSSIBLE")
+
+        if scenario_id == "dns_tunnel":
+            from dsp.protocols.dns.tunnel_validation import evaluate_dns_tunnel_invariants
+
+            invariant_codes = evaluate_dns_tunnel_invariants(
+                self.store,
+                run_id,
+                scenario_id,
+            )
+            for code in invariant_codes:
+                if code in fail_fast and code not in codes:
+                    codes.append(code)
 
         return codes
 
@@ -225,4 +249,102 @@ def _thresholds_met(
             return False
         if "eq" in rule and value != rule["eq"]:
             return False
+        if "min_ratio_of" in rule:
+            baseline = metrics.get(rule["min_ratio_of"])
+            # No planned volume recorded (unit fixtures) — skip ratio gate.
+            if isinstance(baseline, (int, float)) and baseline > 0:
+                if not isinstance(value, (int, float)):
+                    return False
+                ratio = float(rule.get("min_ratio", 0.95))
+                if value < baseline * ratio:
+                    return False
     return True
+
+
+def _enrich_dns_tunnel_metrics(
+    store: EventStore,
+    run_id: str,
+    scenario_id: str,
+    metrics: dict[str, int | float],
+) -> dict[str, int | float]:
+    enriched = dict(metrics)
+    completed = _last_event_evidence(store, run_id, scenario_id, "dns_tunnel_completed")
+    started = _last_event_evidence(store, run_id, scenario_id, "dns_tunnel_started")
+    planned = int(
+        completed.get("total_planned_queries")
+        or completed.get("planned_queries")
+        or started.get("total_planned_queries")
+        or started.get("planned_queries")
+        or 0
+    )
+    dispatched = int(
+        completed.get("dispatched_queries")
+        or enriched.get("dns_tunnel_query_sent_count")
+        or 0
+    )
+    observed = int(completed.get("observed_queries") or dispatched)
+    if planned:
+        enriched["planned_queries"] = planned
+    if dispatched or planned:
+        enriched["dispatched_queries"] = dispatched
+    if observed or planned:
+        enriched["observed_queries"] = observed
+    return enriched
+
+
+def _enrich_dga_metrics(
+    store: EventStore,
+    run_id: str,
+    scenario_id: str,
+    metrics: dict[str, int | float],
+) -> dict[str, int | float]:
+    enriched = dict(metrics)
+    completed = _last_event_evidence(store, run_id, scenario_id, "dga_completed")
+    started = _last_event_evidence(store, run_id, scenario_id, "dga_started")
+    generated = int(
+        completed.get("domains_generated")
+        or enriched.get("dga_domain_generated_count")
+        or 0
+    )
+    dispatched = int(
+        completed.get("dispatched_queries")
+        or store.count(
+            EventQuery(run_id=run_id, scenario_id=scenario_id, event="dns_query_sent")
+        )
+        or 0
+    )
+    planned = int(
+        started.get("planned_domains")
+        or (
+            int(started.get("phase1_count") or 0) + int(started.get("phase2_count") or 0)
+        )
+        or generated
+    )
+    enriched["generated_domains"] = generated
+    enriched["dispatched_queries"] = dispatched
+    enriched["planned_domains"] = planned
+    enriched["observed_nxdomain"] = int(
+        completed.get("nxdomain_observed")
+        or enriched.get("dga_nxdomain_observed_count")
+        or 0
+    )
+    enriched["observed_resolved"] = int(
+        completed.get("resolved_observed")
+        or enriched.get("dga_resolved_observed_count")
+        or 0
+    )
+    if "dga_query_dispatched_count" not in enriched:
+        enriched["dga_query_dispatched_count"] = dispatched
+    return enriched
+
+
+def _last_event_evidence(
+    store: EventStore,
+    run_id: str,
+    scenario_id: str,
+    event_name: str,
+) -> dict[str, Any]:
+    for event in reversed(store.list_events(run_id, scenario_id)):
+        if event.event == event_name:
+            return dict(event.evidence or {})
+    return {}

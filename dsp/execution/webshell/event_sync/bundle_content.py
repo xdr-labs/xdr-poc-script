@@ -41,8 +41,10 @@ def strip_webshell_exit_marker(body: bytes) -> bytes:
     return _EXIT_CODE_MARKER.sub(b"", body.rstrip())
 
 
-def normalize_webshell_command_output(body: bytes) -> str:
+def normalize_webshell_command_output(body: bytes | str) -> str:
     """Normalize HTML-wrapped webshell command output for shell parsing."""
+    if isinstance(body, str):
+        body = body.encode("utf-8", errors="surrogateescape")
     cleaned = strip_webshell_exit_marker(body)
     match = _PRE_BLOCK_RE.search(cleaned)
     if match is not None:

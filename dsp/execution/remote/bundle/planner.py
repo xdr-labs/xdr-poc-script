@@ -15,17 +15,7 @@ from dsp.plugins.models import PluginRecord
 from dsp.runtime.scenario_plan import (
     build_port_sweep_plan_view,
 )
-from dsp.protocols.dns.tunnel import (
-    CHUNK_SIZE_DEFAULT,
-    PAYLOAD_MB_DEFAULT,
-    TUNNEL_DOMAIN_DEFAULT,
-    build_tunnel_fqdn,
-    chunk_to_b32_label,
-    iter_payload_chunks,
-    plan_chunk_count,
-    select_tunnel_targets,
-)
-from dsp.protocols.dns.volume_profiles import apply_volume_profile
+from dsp.protocols.dns.tunnel import plan_dns_tunnel
 from dsp.protocols.http.sqli_payloads import plan_sqli_requests
 from dsp.protocols.http.urls import MAX_HOSTS_DEFAULT, plan_followup_requests
 from dsp.protocols.recon import MAX_PORTS_DEFAULT, plan_port_sweep
@@ -143,41 +133,7 @@ def _plan_port_sweep(targets: TargetSet, params: dict[str, Any], *, dry_run: boo
 
 
 def _plan_dns_tunnel(targets: TargetSet, params: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
-    tuned = apply_volume_profile(params, dry_run=dry_run)
-    payload_mb = float(tuned.get("payload_mb", PAYLOAD_MB_DEFAULT))
-    chunk_size = int(tuned.get("chunk_size", CHUNK_SIZE_DEFAULT))
-    domain = str(tuned.get("domain", TUNNEL_DOMAIN_DEFAULT))
-    max_hosts = int(tuned.get("max_hosts", 2))
-    max_chunks = tuned.get("max_chunks")
-    hosts = select_tunnel_targets(targets, tuned, max_hosts=max_hosts)
-    total = plan_chunk_count(payload_mb, chunk_size)
-    if max_chunks is not None:
-        total = min(total, int(max_chunks))
-
-    queries: list[dict[str, Any]] = []
-    for target in hosts:
-        for seq, chunk in enumerate(iter_payload_chunks(payload_mb, chunk_size), start=1):
-            if seq > total:
-                break
-            label = chunk_to_b32_label(chunk)
-            fqdn = build_tunnel_fqdn(seq, label, domain)
-            queries.append(
-                {
-                    "target": target,
-                    "seq": seq,
-                    "fqdn": fqdn,
-                    "chunk_bytes": len(chunk),
-                    "label_length": len(label),
-                }
-            )
-
-    return {
-        "type": "dns_tunnel",
-        "mode": "mock" if dry_run else "live",
-        "domain": domain,
-        "timeout": float(tuned.get("timeout", 0.05)),
-        "queries": queries,
-    }
+    return plan_dns_tunnel(targets, params, dry_run=dry_run)
 
 
 def _plan_http_followup(targets: TargetSet, params: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:

@@ -44,7 +44,7 @@ def run(
     hosts = select_smb_hosts(targets, params, max_hosts=max_hosts)
     if not hosts:
         ActivityReporter(ctx, scenario_id).emit_skipped(
-            reason="no_open_445_service",
+            reason="No SMB service discovered",
             auth_attempts=0,
         )
         ctx.event_store.append(
@@ -57,7 +57,7 @@ def run(
                 status="info",
                 source=source,
                 evidence={
-                    "reason": "skipped_no_open_service: no smb_hosts (TCP/445) from discovery",
+                    "reason": "No SMB service discovered",
                     "skipped_no_open_service": True,
                     "attempts_planned": 0,
                     "tcp_connect_attempts": 0,
