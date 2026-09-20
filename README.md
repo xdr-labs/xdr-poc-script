@@ -1,21 +1,81 @@
-# Detection Scenario Platform (DSP)
+<h1 align="center">Detection Scenario Platform (DSP)</h1>
 
-**Release 1.4.0** — Generate realistic security-scenario traffic, collect structured events, and produce validation reports for lab and XDR testing.
+<p align="center">
+  <strong>Repeatable security traffic generation for XDR, NDR, and lab validation.</strong>
+</p>
 
-DSP runs attack-simulation scenarios (port sweep, DNS tunnel, HTTP follow-up, SQL injection, SSH failure, and more) against a target network you define. Results land in a local run folder as events, reports, and evidence you can review or export.
+<p align="center">
+  Run controlled detection scenarios, capture structured evidence, and produce repeatable validation reports from one CLI/TUI workflow.
+</p>
+
+<p align="center">
+  <strong>English</strong> · <a href="README.ko.md">한국어</a> · <a href="https://dsp.xdr.ooo/">Product Website</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/release-1.4.0-16A34A?style=flat-square" alt="Release 1.4.0">
+  <img src="https://img.shields.io/badge/Python-3.11%2B-2563EB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/execution-local%20%7C%20webshell-7C3AED?style=flat-square" alt="Local or webshell">
+  <img src="https://img.shields.io/badge/purpose-security%20lab-E11D48?style=flat-square" alt="Security lab">
+</p>
+
+<p align="center">
+  <strong>Product website:</strong> <a href="https://dsp.xdr.ooo/">dsp.xdr.ooo</a>
+</p>
 
 ---
 
+## Generate traffic. Keep evidence. Repeat the test.
+
+DSP runs controlled security scenarios against a target network you define and records the run as structured evidence.
+
+It is intended for **authorized labs, POCs, detection engineering, and XDR/NDR validation**. DSP validates traffic/event generation and test evidence; it does not claim that a vendor product must generate a specific alert.
+
 ## What it does
 
-| | |
+| Capability | What DSP provides |
 |---|---|
-| **Runs scenarios** | Dispatches protocol traffic from this host (**local**) or via a **webshell** on a remote host |
-| **Records events** | Append-only event store (`events.db` / `events.jsonl`) — single source of truth |
-| **Produces reports** | `report.md`, `validation.json`, `traffic_summary.json` per run |
-| **Profiles** | `low`, `normal`, or `high` traffic volume — no need to memorize CLI flags |
+| **Scenario execution** | Port sweep, DNS tunnel, HTTP follow-up, SQL injection, SSH failure, and additional scenarios |
+| **Execution modes** | Run locally or through a configured remote webshell in an authorized lab |
+| **Event evidence** | Append-only `events.db` / `events.jsonl` run evidence |
+| **Validation reports** | `report.md`, `validation.json`, and `traffic_summary.json` per run |
+| **Traffic profiles** | Low, normal, and high profiles without memorizing long CLI options |
+| **Repeatability** | Saved configuration plus per-run output under `~/.dsp/runs/` |
+| **Operator UX** | Menu-first workflow with CLI available for automation |
 
-DSP validates **traffic and event generation**, not vendor alert firing.
+## Workflow
+
+```mermaid
+flowchart LR
+    C["Configure<br/>target + profile + mode"] --> R["Run Scenario"]
+    R --> T["Generate Security Traffic"]
+    T --> E["Append-only Events"]
+    E --> V["Validation Evidence"]
+    V --> P["Reports<br/>Markdown + JSON"]
+```
+
+## Everyday workflow
+
+```bash
+cd /path/to/xdr-poc-script
+./dsp-menu.sh
+```
+
+The normal menu flow is:
+
+```text
+Configure environment
+      ↓
+Run scenario
+      ↓
+Show latest report
+      ↓
+Review events / validation / traffic summary
+```
+
+For the product guide and current operator documentation, start at **https://dsp.xdr.ooo/**.
+
+> Use DSP only on systems and networks you own or are explicitly authorized to test.
 
 ---
 
