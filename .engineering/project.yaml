@@ -1,33 +1,29 @@
 engineering_system:
-  version: "1.7.0"
-  policy_epoch: 6
+  version: 1.7.0
+  policy_epoch: 7
   mode: adopted
-  baseline: "f2ecbeec1686b925f64dac925333dace2f969466"
-  ci_mode: "shared"
+  baseline: 9a4fbbd25b95d3f2270febe84f835877784e1507
+  ci_mode: shared
   native_ci_workflows: []
-  merge_gate_status: "advisory"
-
+  merge_gate_status: advisory
 project:
-  name: "xdr-labs__xdr-poc-script"
-  type: "python"
-  maturity: "development"
+  name: xdr-labs__xdr-poc-script
+  type: python
+  maturity: development
   user_facing: false
-  primary_user_surface: "none"
-
+  primary_user_surface: none
 domains:
-  - "core"
-
+- core
 platforms:
-  - "linux"
-
+- linux
 operations:
   production_oriented: false
   runbook_required: false
   incident_response_required: false
   persistent_state: false
   runbook_paths: []
-  health_command: ""
-  backup_command: ""
-  restore_test_command: ""
-  upgrade_command: ""
-  rollback_command: ""
+  health_command: ''
+  backup_command: ''
+  restore_test_command: ''
+  upgrade_command: ''
+  rollback_command: ''
