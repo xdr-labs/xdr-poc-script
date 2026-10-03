@@ -10,8 +10,8 @@ project:
   name: xdr-labs__xdr-poc-script
   type: python
   maturity: development
-  user_facing: false
-  primary_user_surface: none
+  user_facing: true
+  primary_user_surface: cli
 domains:
 - core
 platforms:
