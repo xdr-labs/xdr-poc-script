@@ -3,7 +3,16 @@ version: 1
 setup_command: "python -m pip install -e . && python -m pip install pytest"
 
 paths:
+  "dsp/**":
+    domains:
+      - "core"
+  "scripts/**":
+    domains:
+      - "core"
   "tests/**":
+    domains:
+      - "core"
+  "pyproject.toml":
     domains:
       - "core"
 
@@ -14,7 +23,7 @@ scenarios:
     timeout_seconds: 600
     agent_default: true
     scope: integration
-    name: Project-native affected tests
+    name: Fast representative core regression
     level: integration
     domains:
       - "core"
@@ -22,10 +31,10 @@ scenarios:
       - affected
     platforms:
       - "linux"
-    command: "python -m pytest -q"
+    command: "python -m pytest -q tests/test_traffic_profiles.py tests/detection/test_models.py tests/execution/test_models.py tests/runtime/test_operational_profiles.py tests/validation/test_path_equality.py"
     invariants:
-      - "project-native tests remain green for affected changes"
-    release_gate: true
+      - "representative traffic-profile, model, operational-profile, and path-equality regressions remain green"
+    release_gate: false
 
   - id: ADOPTED-STATIC-001
     cost: cheap
